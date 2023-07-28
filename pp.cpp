@@ -10,6 +10,9 @@
 #include <conio.h>
 #include <dos.h>
 
+
+//// TODO: Rearrange so we don't need prototypes?
+
 //prototypes:
 void init(void);
 void blur(void);
@@ -20,9 +23,9 @@ inline void waves(void);
 inline void dots(void);
 inline void lines(void);
 
-#define NUM_RENDS	3
+#define NUM_EFFECTS	3
 
-int curr_renderer;
+int curr_effect;
 
 
 int score;
@@ -388,7 +391,7 @@ int main(void)
   		mouse_x = r.x.cx * 0.420062695924 + 26;
   		mouse_y = r.x.dx * 0.74 + 26;
 
-		switch(curr_renderer)
+		switch(curr_effect)
       {
       	case 0: waves(); break;
          case 1: dots(); break;
@@ -418,7 +421,7 @@ int main(void)
                }
                init_rnd();
             	make_palette(pal_table[get_rnd()%NUM_PALETTES]);
-               curr_renderer=get_rnd()%NUM_RENDS;
+               curr_effect=get_rnd()%NUM_EFFECTS;
                score = 0;
          }
 	      if(ball_y > (mouse_y - 18) && ball_y < (mouse_y+18) && ball_x <13)
@@ -428,7 +431,7 @@ int main(void)
             ball_x = x_temp;
 	         ball_y_delta = (ball_y-mouse_y)/4;
             make_palette(pal_table[get_rnd()%NUM_PALETTES]);
-            curr_renderer=get_rnd()%NUM_RENDS;
+            curr_effect=get_rnd()%NUM_EFFECTS;
             score++;
 	      }
 	      else if(ball_y < (199-(mouse_y - 18)) && ball_y > (199-(mouse_y+18)) && ball_x >307)
@@ -438,7 +441,7 @@ int main(void)
             ball_x = x_temp;
 	         ball_y_delta = (ball_y-(199-mouse_y))/4;
             make_palette(pal_table[get_rnd()%NUM_PALETTES]);
-            curr_renderer=get_rnd()%NUM_RENDS;
+            curr_effect=get_rnd()%NUM_EFFECTS;
             score++;
 	      }
          else if(ball_x < (319-(mouse_x - 18)) && ball_x > (319-(mouse_x+18)) && ball_y <13)
@@ -449,7 +452,7 @@ int main(void)
 	         ball_x_delta = (ball_x-(319-mouse_x))/4;
             make_palette(pal_table[get_rnd()%NUM_PALETTES]);
             score++;
-            curr_renderer=get_rnd()%NUM_RENDS;
+            curr_effect=get_rnd()%NUM_EFFECTS;
 	      }
 	      else if(ball_x > (mouse_x - 18) && ball_x < (mouse_x+18) && ball_y >188)
 	      {
@@ -459,7 +462,7 @@ int main(void)
 	         ball_x_delta = (ball_x-mouse_x)/4;
             make_palette(pal_table[get_rnd()%NUM_PALETTES]);
             score++;
-            curr_renderer=get_rnd()%NUM_RENDS+1;
+            curr_effect=get_rnd()%NUM_EFFECTS+1;
       	}
       }
 
@@ -618,7 +621,7 @@ void init(void)
    memset(x_buffer,0,SCREEN_SIZE);
 
    make_palette(pal_table[get_rnd()%NUM_PALETTES]);
-   curr_renderer=get_rnd()%NUM_RENDS+1;
+   curr_effect=get_rnd()%NUM_EFFECTS+1;
 
    int x,y;
    double newx, newy;
@@ -688,7 +691,7 @@ void init(void)
 		cosTable[i] = cos( ((2*3.1415)/256)*i );
       sinTable[i] = sin( ((2*3.1415)/256)*i );
    }
-   curr_renderer = 0; 
+   curr_effect = 0;
 
 }
 
