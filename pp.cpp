@@ -1,14 +1,14 @@
-            // grapihcs lib
+//// TODO: fix indentation (tab stop is 3!!)
 
+#include <math.h>
+#include <mem.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <dos.h>
-#include <mem.h>
-#include <conio.h>
-#include <math.h>
 #include <string.h>
 #include <time.h>
 
+#include <conio.h>
+#include <dos.h>
 
 //prototypes:
 void init(void);

@@ -7,7 +7,7 @@ My attempt to clean up an ancient DOS game a friend and I made in high school.
 ### Phase 1
 
 - Use the same compiler (was it MSVC 6.0? Borland?)
-- Rearrange things to be more sane, but still one file
+- Rename, rearrange, reformat, and refactor things to be more sane, but still one file
 - Don't change any functionality unless preserving bugs makes refactoring more complex
 
 ### Phase 2
