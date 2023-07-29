@@ -30,7 +30,7 @@ int curr_effect;
 
 int score;
 
-unsigned char numbers[10][7][5] = { { 0, 255, 255, 255, 0,
+unsigned char digit_sprites[10][7][5] = { { 0, 255, 255, 255, 0,
          						  255, 0, 0, 0, 255,
                              255, 0, 0, 0, 255,
                              255, 0, 0, 0, 255,
@@ -726,7 +726,7 @@ void draw_text(byte *buffer, int x, int y)
       {
       	for (int x_loop = 0; x_loop < 5; x_loop++)
          {
-         	set_pixel(buffer, x_loop + x + (i*7), y_loop + y, numbers[text[i]-48][y_loop][x_loop]);
+         	set_pixel(buffer, x_loop + x + (i*7), y_loop + y, digit_sprites[text[i]-48][y_loop][x_loop]);
          }
       }
    }
