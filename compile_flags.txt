@@ -1,0 +1,16 @@
+-I
+C:\WATCOM\h
+-D
+_SIZE_T_DEFINED
+-D
+_M_IX86
+-D
+_M_I86
+-D
+__near=
+-D
+__far=
+-D
+__huge=
+-D
+__interrupt=
