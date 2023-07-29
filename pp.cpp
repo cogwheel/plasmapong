@@ -23,7 +23,7 @@ inline void waves(void);
 inline void dots(void);
 inline void lines(void);
 
-#define NUM_EFFECTS	3
+#define NUM_EFFECTS  3
 
 int curr_effect;
 
@@ -31,14 +31,14 @@ int curr_effect;
 int score;
 
 unsigned char digit_sprites[10][7][5] = { { 0, 255, 255, 255, 0,
-         						  255, 0, 0, 0, 255,
+                             255, 0, 0, 0, 255,
                              255, 0, 0, 0, 255,
                              255, 0, 0, 0, 255,
                              255, 0, 0, 0, 255,
                              255, 0, 0, 0, 255,
                              0, 255, 255, 255, 0 },
 
-								   { 0, 255, 255, 0, 0,
+                           { 0, 255, 255, 0, 0,
                              0, 0, 255, 0, 0,
                              0, 0, 255, 0, 0,
                              0, 0, 255, 0, 0,
@@ -46,7 +46,7 @@ unsigned char digit_sprites[10][7][5] = { { 0, 255, 255, 255, 0,
                              0, 0, 255, 0, 0,
                              0, 255, 255, 255, 0 },
 
-								   { 0, 255, 255, 255, 0,
+                           { 0, 255, 255, 255, 0,
                              255, 0, 0, 0, 255,
                              0, 0, 0, 0, 255,
                              0, 0, 255, 255, 0,
@@ -54,7 +54,7 @@ unsigned char digit_sprites[10][7][5] = { { 0, 255, 255, 255, 0,
                              255, 0, 0, 0, 0,
                              255, 255, 255, 255, 255 },
 
-								   { 0, 255, 255, 255, 0,
+                           { 0, 255, 255, 255, 0,
                              255, 0, 0, 0, 255,
                              0, 0, 0, 0, 255,
                              0, 0, 255, 255, 0,
@@ -62,7 +62,7 @@ unsigned char digit_sprites[10][7][5] = { { 0, 255, 255, 255, 0,
                              255, 0, 0, 0, 255,
                              0, 255, 255, 255, 0 },
 
-								   { 255, 0, 0, 255, 0,
+                           { 255, 0, 0, 255, 0,
                              255, 0, 0, 255, 0,
                              255, 0, 0, 255, 0,
                              255, 0, 0, 255, 0,
@@ -70,7 +70,7 @@ unsigned char digit_sprites[10][7][5] = { { 0, 255, 255, 255, 0,
                              0, 0, 0, 255, 0,
                              0, 0, 0, 255, 0 },
 
-								   { 255, 255, 255, 255, 255,
+                           { 255, 255, 255, 255, 255,
                              255, 0, 0, 0, 0,
                              255, 0, 0, 0, 0,
                              255, 255, 255, 255, 0,
@@ -78,7 +78,7 @@ unsigned char digit_sprites[10][7][5] = { { 0, 255, 255, 255, 0,
                              255, 0, 0, 0, 255,
                              0, 255, 255, 255, 0 },
 
-								   { 0, 255, 255, 255, 0,
+                           { 0, 255, 255, 255, 0,
                              255, 0, 0, 0, 255,
                              255, 0, 0, 0, 0,
                              255, 255, 255, 255, 0,
@@ -86,7 +86,7 @@ unsigned char digit_sprites[10][7][5] = { { 0, 255, 255, 255, 0,
                              255, 0, 0, 0, 255,
                              0, 255, 255, 255, 0 },
 
-								   { 255, 255, 255, 255, 255,
+                           { 255, 255, 255, 255, 255,
                              0, 0, 0, 0, 255,
                              0, 0, 0, 255, 0,
                              0, 0, 255, 0, 0,
@@ -94,7 +94,7 @@ unsigned char digit_sprites[10][7][5] = { { 0, 255, 255, 255, 0,
                              0, 0, 255, 0, 0,
                              0, 0, 255, 0, 0 },
 
-								   { 0, 255, 255, 255, 0,
+                           { 0, 255, 255, 255, 0,
                              255, 0, 0, 0, 255,
                              255, 0, 0, 0, 255,
                              0, 255, 255, 255, 0,
@@ -102,7 +102,7 @@ unsigned char digit_sprites[10][7][5] = { { 0, 255, 255, 255, 0,
                              255, 0, 0, 0, 255,
                              0, 255, 255, 255, 0 },
 
-								   { 0, 255, 255, 255, 0,
+                           { 0, 255, 255, 255, 0,
                              255, 0, 0, 0, 255,
                              255, 0, 0, 0, 255,
                              0, 255, 255, 255, 255,
@@ -131,8 +131,8 @@ inline int get_rnd(void)
 
 void init_rnd(void)
 {
-	locc = 0;
-	for (int i = 0; i < 1024; i++)
+   locc = 0;
+   for (int i = 0; i < 1024; i++)
    {
        rnd_tbl[i] = rand();
    }
@@ -159,13 +159,13 @@ float ball_x,ball_y,ball_x_delta,ball_y_delta,x_temp, y_temp;
 #define NUM_COLORS          256       // number of colors in mode 0x13
 
 #define DISPLAY_ENABLE      0x01      // VGA input status bits
-#define INPUT_STATUS    			0x03da
+#define INPUT_STATUS             0x03da
 #define VRETRACE            0x08
 
-#define PALETTE_MASK					0x03c6
-#define PALETTE_REGISTER_READ 	0x03c7
-#define PALETTE_REGISTER_WRITE 	0x03c8
-#define PALETTE_DATA 				0x03c9
+#define PALETTE_MASK             0x03c6
+#define PALETTE_REGISTER_READ    0x03c7
+#define PALETTE_REGISTER_WRITE   0x03c8
+#define PALETTE_DATA             0x03c9
 
 typedef unsigned char  byte;
 typedef unsigned short word;
@@ -173,96 +173,96 @@ typedef unsigned short word;
 
 void draw_text(byte * buffer,int x, int y);
 
-#define NUM_PALETTES          	4
+#define NUM_PALETTES             4
 unsigned char pal_table[NUM_PALETTES][66] = {{  5,
                                                 0,  31,
-                                       			0,   0,   0,
-                                       			0,   0,  63,
+                                                0,   0,   0,
+                                                0,   0,  63,
 
-                                      			  32,  63,
-                                       			0,   0,  63,
-                                       			0,   0,   0,
+                                               32,  63,
+                                                0,   0,  63,
+                                                0,   0,   0,
 
-                                      			  64,  95,
-                                       			0,   0,   0,
-                                      			  63,   0,   0,
+                                               64,  95,
+                                                0,   0,   0,
+                                               63,   0,   0,
 
-                                      			  96, 127,
-                                      			  63,   0,   0,
-                                      		 		0,   0,   0,
+                                               96, 127,
+                                               63,   0,   0,
+                                                0,   0,   0,
 
-                                     			 128, 255,
-                                       			0,   0,   0,
-                                   				  63,  63,   0,
-
-                                               0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1  },
-
-                                             {  5,
-                                                0,  31,
-                                       			0,   0,   0,
-                                       			21,   39,  23,
-
-                                      			  32,  63,
-                                       			21,   39,  23,
-                                       			63,   19,   0,
-
-                                      			  64,  95,
-                                       			63,   19,   0,
-                                      			  32,   33,   27,
-
-                                      			  96, 127,
-                                      			  32,   33,   27,
-                                      		 		26,   5,   18,
-
-                                     			 128, 255,
-                                       			26,   5,   18,
-                                   				  63,  63,   0,
+                                              128, 255,
+                                                0,   0,   0,
+                                               63,  63,   0,
 
                                                0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1  },
 
                                              {  5,
                                                 0,  31,
-                                       			0,   0,   0,
-                                       			21,   33,  40,
+                                                0,   0,   0,
+                                                21,   39,  23,
 
-                                      			  32,  63,
-                                       			21,   33,  40,
-                                       			12,   12,   20,
+                                               32,  63,
+                                                21,   39,  23,
+                                                63,   19,   0,
 
-                                      			  64,  110,
-                                       			12,   12,   20,
-                                      			  43,   33,   38,
+                                               64,  95,
+                                                63,   19,   0,
+                                               32,   33,   27,
 
-                                      			  111, 127,
-                                      			  43,   33,   38,
-                                      		 		63,   17,   3,
+                                               96, 127,
+                                               32,   33,   27,
+                                                26,   5,   18,
 
-                                     			 128, 255,
-                                       			63,   17,   3,
-                                   				  54,  46,   30,
+                                              128, 255,
+                                                26,   5,   18,
+                                               63,  63,   0,
 
                                                0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1  },
 
                                              {  5,
                                                 0,  31,
-                                       			0,   0,   0,
-                                       			57,   57,  63,
+                                                0,   0,   0,
+                                                21,   33,  40,
 
-                                      			  32,  63,
-                                       			57,   57,  63,
-                                       			0,   0,   0,
+                                               32,  63,
+                                                21,   33,  40,
+                                                12,   12,   20,
 
-                                      			  64,  110,
-                                       			0,   0,   0,
-                                      			  63,   63,   63,
+                                               64,  110,
+                                                12,   12,   20,
+                                               43,   33,   38,
 
-                                      			  111, 127,
-                                      			  63,   63,   63,
-                                      		 		0,   0,   0,
+                                               111, 127,
+                                               43,   33,   38,
+                                                63,   17,   3,
 
-                                     			 128, 255,
-                                       			0,   0,   0,
-                                   				  63,  63,   63,
+                                              128, 255,
+                                                63,   17,   3,
+                                               54,  46,   30,
+
+                                               0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1  },
+
+                                             {  5,
+                                                0,  31,
+                                                0,   0,   0,
+                                                57,   57,  63,
+
+                                               32,  63,
+                                                57,   57,  63,
+                                                0,   0,   0,
+
+                                               64,  110,
+                                                0,   0,   0,
+                                               63,   63,   63,
+
+                                               111, 127,
+                                               63,   63,   63,
+                                                0,   0,   0,
+
+                                              128, 255,
+                                                0,   0,   0,
+                                               63,  63,   63,
 
                                                0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0  }
 
@@ -277,7 +277,7 @@ void set_mode(byte mode);
 void set_pixel(byte *buffer, int x,int y,byte color);
 void show_buffer(byte *buffer);
 void s_pal_entry( unsigned char index,
-						unsigned char red,
+                  unsigned char red,
                   unsigned char green,
                   unsigned char blue );
 void line(byte * buffer, int x1, int y1, int x2, int y2, unsigned char color);
@@ -311,23 +311,23 @@ inline void set_pixel(byte *buffer, int x,int y,byte color)
 
 inline void show_buffer(byte *buffer)
 {
-	while  ((inp(INPUT_STATUS) & VRETRACE));
+   while  ((inp(INPUT_STATUS) & VRETRACE));
    while (!(inp(INPUT_STATUS) & VRETRACE));
 
-	memcpy(x_buffer,buffer,SCREEN_SIZE);
-  	memcpy(vga,buffer,SCREEN_SIZE);
+   memcpy(x_buffer,buffer,SCREEN_SIZE);
+   memcpy(vga,buffer,SCREEN_SIZE);
 }
 
 inline void s_pal_entry( unsigned char index,
-		  				unsigned char red,
+                  unsigned char red,
                   unsigned char green,
                   unsigned char blue )
 {
-	outp(PALETTE_MASK,0xff);
-	outp(PALETTE_REGISTER_WRITE, index); //tell it what index to use (0-255)
-	outp(PALETTE_DATA, red); //enter the red
-	outp(PALETTE_DATA, green); //green
-	outp(PALETTE_DATA, blue); //blue
+   outp(PALETTE_MASK,0xff);
+   outp(PALETTE_REGISTER_WRITE, index); //tell it what index to use (0-255)
+   outp(PALETTE_DATA, red); //enter the red
+   outp(PALETTE_DATA, green); //green
+   outp(PALETTE_DATA, blue); //blue
 }
 
 
@@ -379,21 +379,21 @@ void line(byte * buffer, int x1, int y1, int x2, int y2, unsigned char color)
 
 int main(void)
 {
-	init();
+   init();
 
    union REGS r;
    r.x.bx=0;
    while(r.x.bx !=3)
    {
-   	r.x.ax = 3;
-  		int86(0x33, &r, &r);
+      r.x.ax = 3;
+      int86(0x33, &r, &r);
 
-  		mouse_x = r.x.cx * 0.420062695924 + 26;
-  		mouse_y = r.x.dx * 0.74 + 26;
+      mouse_x = r.x.cx * 0.420062695924 + 26;
+      mouse_y = r.x.dx * 0.74 + 26;
 
-		switch(curr_effect)
+      switch(curr_effect)
       {
-      	case 0: waves(); break;
+         case 0: waves(); break;
          case 1: dots(); break;
          case 2: lines(); break;
       }
@@ -405,71 +405,71 @@ int main(void)
       ball_y += ball_y_delta;
 
       if(ball_x > 305 || ball_x < 15 || ball_y > 185 || ball_y <15)
-		{
+      {
          if(ball_x > 319 || ball_x < 0 || ball_y > 199 || ball_y <0){
-         	   ball_x=160; ball_y=100;
-  	 				ball_x_delta=(get_rnd()%2) ? 2.3 : -2.3; ball_y_delta=(get_rnd()%2) ? 2.3 : -2.3;
+               ball_x=160; ball_y=100;
+               ball_x_delta=(get_rnd()%2) ? 2.3 : -2.3; ball_y_delta=(get_rnd()%2) ? 2.3 : -2.3;
                speed=2.3;
-					for(; score>0; score--)
+               for(; score>0; score--)
                {
-//               	draw_text(x_buffer,150,91);
-               	blur();
+//                draw_text(x_buffer,150,91);
+                  blur();
                   show_buffer(d_buffer);
-//               	draw_text(x_buffer,150,91);
-               	blur();
+//                draw_text(x_buffer,150,91);
+                  blur();
                   show_buffer(d_buffer);
                }
                init_rnd();
-            	make_palette(pal_table[get_rnd()%NUM_PALETTES]);
+               make_palette(pal_table[get_rnd()%NUM_PALETTES]);
                curr_effect=get_rnd()%NUM_EFFECTS;
                score = 0;
          }
-	      if(ball_y > (mouse_y - 18) && ball_y < (mouse_y+18) && ball_x <13)
-	      {
-         	speed+=.05;
-	      	ball_x_delta = speed;
+         if(ball_y > (mouse_y - 18) && ball_y < (mouse_y+18) && ball_x <13)
+         {
+            speed+=.05;
+            ball_x_delta = speed;
             ball_x = x_temp;
-	         ball_y_delta = (ball_y-mouse_y)/4;
+            ball_y_delta = (ball_y-mouse_y)/4;
             make_palette(pal_table[get_rnd()%NUM_PALETTES]);
             curr_effect=get_rnd()%NUM_EFFECTS;
             score++;
-	      }
-	      else if(ball_y < (199-(mouse_y - 18)) && ball_y > (199-(mouse_y+18)) && ball_x >307)
-	      {
-         	speed+=.05;
-	      	ball_x_delta = -1*speed;
+         }
+         else if(ball_y < (199-(mouse_y - 18)) && ball_y > (199-(mouse_y+18)) && ball_x >307)
+         {
+            speed+=.05;
+            ball_x_delta = -1*speed;
             ball_x = x_temp;
-	         ball_y_delta = (ball_y-(199-mouse_y))/4;
+            ball_y_delta = (ball_y-(199-mouse_y))/4;
             make_palette(pal_table[get_rnd()%NUM_PALETTES]);
             curr_effect=get_rnd()%NUM_EFFECTS;
             score++;
-	      }
+         }
          else if(ball_x < (319-(mouse_x - 18)) && ball_x > (319-(mouse_x+18)) && ball_y <13)
-	      {
-         	speed+=.05;
-	      	ball_y_delta = speed;
+         {
+            speed+=.05;
+            ball_y_delta = speed;
             ball_y = y_temp;
-	         ball_x_delta = (ball_x-(319-mouse_x))/4;
+            ball_x_delta = (ball_x-(319-mouse_x))/4;
             make_palette(pal_table[get_rnd()%NUM_PALETTES]);
             score++;
             curr_effect=get_rnd()%NUM_EFFECTS;
-	      }
-	      else if(ball_x > (mouse_x - 18) && ball_x < (mouse_x+18) && ball_y >188)
-	      {
-         	speed+=.05;
-	      	ball_y_delta = -1*speed;
+         }
+         else if(ball_x > (mouse_x - 18) && ball_x < (mouse_x+18) && ball_y >188)
+         {
+            speed+=.05;
+            ball_y_delta = -1*speed;
             ball_y = y_temp;
-	         ball_x_delta = (ball_x-mouse_x)/4;
+            ball_x_delta = (ball_x-mouse_x)/4;
             make_palette(pal_table[get_rnd()%NUM_PALETTES]);
             score++;
             curr_effect=get_rnd()%NUM_EFFECTS+1;
-      	}
+         }
       }
 
 
       //draw paddles
 
-   	blur();
+      blur();
 
 //      draw_text(d_buffer,10,10);
 
@@ -480,14 +480,14 @@ int main(void)
 
       for(int i=0; i <5; i++)
       {
-      	line(d_buffer,(int)ball_x+get_rnd()%6-3,(int)ball_y+get_rnd()%6-3,(int)ball_x+get_rnd()%6-3,(int)ball_y+get_rnd()%6-3,230);
+         line(d_buffer,(int)ball_x+get_rnd()%6-3,(int)ball_y+get_rnd()%6-3,(int)ball_x+get_rnd()%6-3,(int)ball_y+get_rnd()%6-3,230);
       }
 
       float tempX;
-		for(int i=0; i <25; i++)
+      for(int i=0; i <25; i++)
       {
 
-       	tempX = neb_x[i];
+         tempX = neb_x[i];
 
          neb_x[i] = neb_x[i] * cosTable[neb_a[i]] -   neb_y[i] * sinTable[neb_a[i]];
          neb_y[i] = neb_y[i] * cosTable[neb_a[i]] + tempX * sinTable[neb_a[i]];
@@ -495,7 +495,7 @@ int main(void)
          neb_dx[i]=neb_x[i]+ball_x;
          neb_dy[i]=neb_y[i]+ball_y;
 
-			set_pixel(d_buffer,neb_dx[i],neb_dy[i],255);
+         set_pixel(d_buffer,neb_dx[i],neb_dy[i],255);
       }
 
 
@@ -504,17 +504,17 @@ int main(void)
 
    for (int i = 0; i < 320; i++)
    {
-   	delete target[i];
+      delete target[i];
    }
    delete[] target;
 
-	return 0;
+   return 0;
 }
 
 void make_palette(unsigned char *pal_data)
 {
-	char num_elems = pal_data[0],
-   	  elem_start,
+   char num_elems = pal_data[0],
+        elem_start,
         elem_end,
         difference,
         red_start,
@@ -537,12 +537,12 @@ void make_palette(unsigned char *pal_data)
       elem_end = pal_data[i+1];
       difference = abs(elem_end - elem_start);
 
-   	red_start = pal_data[i+2];
-   	green_start = pal_data[i+3];
-   	blue_start = pal_data[i+4];
-   	red_end = pal_data[i+5];
-   	green_end = pal_data[i+6];
-   	blue_end = pal_data[i+7];
+      red_start = pal_data[i+2];
+      green_start = pal_data[i+3];
+      blue_start = pal_data[i+4];
+      red_end = pal_data[i+5];
+      green_end = pal_data[i+6];
+      blue_end = pal_data[i+7];
 
       working_red = red_start;
       if (working_red < 0) working_red = 0;
@@ -561,19 +561,19 @@ void make_palette(unsigned char *pal_data)
 
       for (int j = elem_start; j <= elem_end; j++)
       {
-      	s_pal_entry(j, int(working_red), int(working_green), int(working_blue));
+         s_pal_entry(j, int(working_red), int(working_green), int(working_blue));
 
          working_red += red_inc;
-	      if (working_red < 0) working_red = 0;
-	      else if (working_red > 63) working_red = 63;
+         if (working_red < 0) working_red = 0;
+         else if (working_red > 63) working_red = 63;
 
          working_green += green_inc;
-	      if (working_green < 0) working_green = 0;
-	      else if (working_green > 63) working_green = 63;
+         if (working_green < 0) working_green = 0;
+         else if (working_green > 63) working_green = 63;
 
          working_blue += blue_inc;
-	      if (working_blue < 0) working_blue = 0;
-	      else if (working_blue > 63) working_blue = 63;
+         if (working_blue < 0) working_blue = 0;
+         else if (working_blue > 63) working_blue = 63;
       }
    }
 
@@ -583,18 +583,18 @@ void make_palette(unsigned char *pal_data)
 
 void blur(void)
 {
-	int new_color;
+   int new_color;
 
    /*   int rand_x=0, rand_y=0;
    rand_x=rand()%4-2; rand_y=rand()%4-2; */
-	for(int y=0; y < 200; y++)
+   for(int y=0; y < 200; y++)
    {
-   	for(int x=0; x < 320; x++)
+      for(int x=0; x < 320; x++)
       {
 
-      	new_color=0;
+         new_color=0;
 
-      	new_color += (x_buffer[target[x][y]])<<3;
+         new_color += (x_buffer[target[x][y]])<<3;
 
          new_color += x_buffer[target[x][y]+1];
          new_color += x_buffer[target[x][y]+SCREEN_WIDTH];
@@ -613,10 +613,10 @@ void blur(void)
 
 void init(void)
 {
-	score = 0;
-	srand(15);
+   score = 0;
+   srand(15);
    init_rnd();
-	set_mode(VGA_256_COLOR_MODE);
+   set_mode(VGA_256_COLOR_MODE);
    memset(d_buffer,0,SCREEN_SIZE);
    memset(x_buffer,0,SCREEN_SIZE);
 
@@ -629,22 +629,22 @@ void init(void)
    target = new unsigned short * [320];
    if (!target)
    {
-   	fprintf(stderr, "Unable to allocate target array 1");
+      fprintf(stderr, "Unable to allocate target array 1");
       exit(1);
    }
    for (int i = 0; i < 320; i++)
    {
-   	target[i] = new unsigned short[200];
-	   if (!target)
-	   {
-	   	fprintf(stderr, "Unable to allocate target array 2");
-	      exit(2);
-	   }
+      target[i] = new unsigned short[200];
+      if (!target)
+      {
+         fprintf(stderr, "Unable to allocate target array 2");
+         exit(2);
+      }
    }
 
    for (y = 0; y < 200; y++)
    {
-   	for (x = 0; x < 320; x++)
+      for (x = 0; x < 320; x++)
       {
          newx = ((x-160)/1.03) + 160;
          newy = ((y-100)/1.03) + 100;
@@ -658,20 +658,20 @@ void init(void)
 
  /*  for(int i=0; i <320; i++)
    {
-     	target_x[i] = ((i - 160)/1.03)+160;
+      target_x[i] = ((i - 160)/1.03)+160;
    }
 
    for(int i=0; i <200; i++)
    {
-   	target_y[i] = ((i - 100)/1.03)+100;
+      target_y[i] = ((i - 100)/1.03)+100;
    }
    */
 
 
 
    for(int i=0; i <(12*255); i++)
-	{
-   	colors[i]=i/12.1;
+   {
+      colors[i]=i/12.1;
    }
 
    ball_x=160; ball_y=100;
@@ -680,31 +680,31 @@ void init(void)
 
    for(int i=0; i < 25; i++)
    {
-   	//neb_x[i] = get_rnd()%40-20;
+      //neb_x[i] = get_rnd()%40-20;
       //neb_y[i] = get_rnd()%40-20;
       neb_x[i] = get_rnd()%3-5;
       neb_y[i] = get_rnd()%3-5;
       neb_a[i] = get_rnd()%30-15;
    }
 
-	for( int i = 0; i!=255; i++ ){
-		cosTable[i] = cos( ((2*3.1415)/256)*i );
+   for( int i = 0; i!=255; i++ ){
+      cosTable[i] = cos( ((2*3.1415)/256)*i );
       sinTable[i] = sin( ((2*3.1415)/256)*i );
    }
-   curr_effect = 0;
+   curr_effect = 0; 
 
 }
 
 inline void waves(void)
 {
-		int vertices[11];
-		for(int i=0; i <=10; i++)
+      int vertices[11];
+      for(int i=0; i <=10; i++)
       {
-      	vertices[i]=get_rnd()%60+60;
+         vertices[i]=get_rnd()%60+60;
       }
-     	for(int i=0; i<10; i++)
+      for(int i=0; i<10; i++)
       {
-      	line(x_buffer,i*32,vertices[i],i*32+32,vertices[i+1],128);
+         line(x_buffer,i*32,vertices[i],i*32+32,vertices[i+1],128);
       }
       int drop_x=get_rnd()%319,drop_y=get_rnd()%119;
       set_pixel(x_buffer,drop_x,drop_y,255);
@@ -716,17 +716,17 @@ inline void waves(void)
 
 void draw_text(byte *buffer, int x, int y)
 {
-	char text[6];
+   char text[6];
 
    sprintf(text, "%d", target[313][20]);
 
    for ( int i = 0; i < strlen(text); i++)
    {
-     	for (int y_loop = 0; y_loop < 7; y_loop++)
+      for (int y_loop = 0; y_loop < 7; y_loop++)
       {
-      	for (int x_loop = 0; x_loop < 5; x_loop++)
+         for (int x_loop = 0; x_loop < 5; x_loop++)
          {
-         	set_pixel(buffer, x_loop + x + (i*7), y_loop + y, digit_sprites[text[i]-48][y_loop][x_loop]);
+            set_pixel(buffer, x_loop + x + (i*7), y_loop + y, digit_sprites[text[i]-48][y_loop][x_loop]);
          }
       }
    }
@@ -734,9 +734,9 @@ void draw_text(byte *buffer, int x, int y)
 
 inline void dots(void)
 {      
-	for(int i=0; i <8; i++)
+   for(int i=0; i <8; i++)
    {
-		int drop_x=get_rnd()%319,drop_y=get_rnd()%199;
+      int drop_x=get_rnd()%319,drop_y=get_rnd()%199;
       set_pixel(x_buffer,drop_x,drop_y,255);
       set_pixel(x_buffer,drop_x+1,drop_y,255);
       set_pixel(x_buffer,drop_x-1,drop_y,255);
@@ -748,6 +748,6 @@ inline void dots(void)
 inline void lines(void)
 {      
 
-	line(x_buffer,get_rnd()%319,get_rnd()%199,get_rnd()%319,get_rnd()%199,get_rnd()%255);
+   line(x_buffer,get_rnd()%319,get_rnd()%199,get_rnd()%319,get_rnd()%199,get_rnd()%255);
 
 }
