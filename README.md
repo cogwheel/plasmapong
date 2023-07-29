@@ -8,7 +8,7 @@ My attempt to clean up an ancient DOS game a friend and I made in high school.
 - [X] Get it running under FreeDOS with OpenWatcom compiler
 - Fix game-breaking problems
     - [ ] Score display
-    - [ ] Address compiler warnings
+    - [X] Address compiler warnings
     - [ ] Crash in non-huge memory model
 - Fix QoL problems
     - [ ] Restore video mode upon exit
@@ -19,7 +19,7 @@ My attempt to clean up an ancient DOS game a friend and I made in high school.
 Currently using [OpenWactom 1.9](http://openwatcom.org/ftp/install/). Will likely switch to [version 2](https://github.com/open-watcom/open-watcom-v2) soon.
 
 ```
-> wcl -mh pp.cpp
+> wcl -mh -wx -we pp.cpp
 ```
 
 Alternatively use `-ml` or `-mc`. See [known issues](#problems-with-latest-builds-on-freedos)

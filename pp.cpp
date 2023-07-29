@@ -141,7 +141,8 @@ void init_rnd(void)
 
 
 int mouse_x, mouse_y;
-unsigned short **target, /*target_x[320],target_y[200],*/ colors[12*255];
+unsigned short **target /*target_x[320],target_y[200],*/;
+short colors[12*255];
 
 float ball_x,ball_y,ball_x_delta,ball_y_delta,x_temp, y_temp;
 
@@ -516,7 +517,6 @@ void make_palette(unsigned char *pal_data)
    char num_elems = pal_data[0],
         elem_start,
         elem_end,
-        difference,
         red_start,
         red_end,
         green_start,
@@ -524,9 +524,11 @@ void make_palette(unsigned char *pal_data)
         blue_start,
         blue_end;
 
+   // TODO: interpolate instead of integrate
    float red_inc,
          green_inc,
          blue_inc,
+         difference,
          working_red,
          working_green,
          working_blue;
@@ -561,7 +563,10 @@ void make_palette(unsigned char *pal_data)
 
       for (int j = elem_start; j <= elem_end; j++)
       {
-         s_pal_entry(j, int(working_red), int(working_green), int(working_blue));
+         s_pal_entry(static_cast<byte>(j),
+                     static_cast<byte>(working_red),
+                     static_cast<byte>(working_green),
+                     static_cast<byte>(working_blue));
 
          working_red += red_inc;
          if (working_red < 0) working_red = 0;
@@ -606,7 +611,7 @@ void blur(void)
          if(noisey) new_color+=get_rnd()%2-1;
          if(new_color >255){new_color=255;}
          if(new_color <0){new_color=0;}
-         set_pixel(d_buffer,x,y,new_color);
+         set_pixel(d_buffer,x,y,static_cast<byte>(new_color));
       }
    }
 }
@@ -684,7 +689,7 @@ void init(void)
       //neb_y[i] = get_rnd()%40-20;
       neb_x[i] = get_rnd()%3-5;
       neb_y[i] = get_rnd()%3-5;
-      neb_a[i] = get_rnd()%30-15;
+      neb_a[i] = static_cast<byte>(get_rnd()%30-15);
    }
 
    for( int i = 0; i!=255; i++ ){
@@ -748,6 +753,6 @@ inline void dots(void)
 inline void lines(void)
 {      
 
-   line(x_buffer,get_rnd()%319,get_rnd()%199,get_rnd()%319,get_rnd()%199,get_rnd()%255);
+   line(x_buffer,get_rnd()%319,get_rnd()%199,get_rnd()%319,get_rnd()%199,static_cast<byte>(get_rnd()%255));
 
 }
