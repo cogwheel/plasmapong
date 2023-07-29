@@ -1,0 +1,4 @@
+# Watcom artifacts
+*.obj
+*.exe
+*.err
