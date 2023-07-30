@@ -430,6 +430,8 @@ void line(uint8_t *buffer, int x1, int y1, int x2, int y2, uint8_t color) {
 #define COUNTDOWN_X 150
 #define COUNTDOWN_Y 91
 
+#define START_SPEED 2.3
+
 int main(void) {
   uint8_t old_mode = get_mode();
 
@@ -474,9 +476,9 @@ int main(void) {
           ball_y < 0) {
         ball_x = MID_X;
         ball_y = MID_Y;
-        ball_x_delta = (get_rnd() % 2) ? 2.3 : -2.3;
-        ball_y_delta = (get_rnd() % 2) ? 2.3 : -2.3;
-        speed = 2.3;
+        ball_x_delta = (get_rnd() % 2) ? START_SPEED : -START_SPEED;
+        ball_y_delta = (get_rnd() % 2) ? START_SPEED : -START_SPEED;
+        speed = START_SPEED;
         // TODO: Use a state machine or something so that input is still
         // processed while score is counting
         for (; score > 0; score--) {
@@ -693,9 +695,9 @@ void init(void) {
 
   ball_x = MID_X;
   ball_y = MID_Y;
-  speed = 2.3;
-  ball_x_delta = (get_rnd() % 2) ? 2.3 : -2.3;
-  ball_y_delta = (get_rnd() % 2) ? 2.3 : -2.3;
+  speed = START_SPEED;
+  ball_x_delta = (get_rnd() % 2) ? START_SPEED : -START_SPEED;
+  ball_y_delta = (get_rnd() % 2) ? START_SPEED : -START_SPEED;
 
   for (int i = 0; i < NEBULA_PARTICLES; i++) {
     neb_x[i] = get_rnd() % 3 - 5;
