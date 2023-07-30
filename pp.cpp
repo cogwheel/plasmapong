@@ -1,5 +1,6 @@
 //// TODO: fix indentation (tab stop is 3!!)
 
+#include <cstdint>
 #include <math.h>
 #include <mem.h>
 #include <stdio.h>
@@ -10,6 +11,7 @@
 #include <conio.h>
 #include <dos.h>
 
+using std::uint8_t;
 
 //// TODO: Rearrange so we don't need prototypes?
 
@@ -18,7 +20,8 @@ void init(void);
 void blur(void);
 void init_rnd(void);
 inline int get_rnd(void);
-void make_palette(unsigned char *pal_data);
+struct PaletteDef;
+void make_palette(PaletteDef const &pal_data);
 inline void waves(void);
 inline void dots(void);
 inline void lines(void);
@@ -115,7 +118,7 @@ unsigned char digit_sprites[10][7][5] = {
 int rnd_tbl[1024];
 int locc;
 float speed;
-bool noisey;
+bool is_noisy;
 
 float neb_x[25], neb_y[25];
 float neb_dx[25], neb_dy[25];
@@ -169,115 +172,125 @@ typedef unsigned short word;
 
 void draw_text(byte *buffer, int x, int y);
 
-#define NUM_PALETTES 4
+#define MAX_PALETTE_RANGES 8
 
-// TODO: struct
-//
-// palette consits of:
-// 1 byte: number of used palette regions
-// 8 palette regions consisting of:
-//    1 byte: starting index
-//    1 byte: ending index
-//    3 byte: starting RGB
-//    3 byte ending RGB
-//  1 byte: flag to enable color jitter
+struct PaletteColor {
+  uint8_t r;
+  uint8_t g;
+  uint8_t b;
+};
+
+// TODO: Remove need to specify both start and end for each entry
+struct PaletteRange {
+  uint8_t first_index;
+  uint8_t last_index;
+  PaletteColor first_color;
+  PaletteColor last_color;
+};
+
+// TODO: read these from a file
+struct PaletteDef {
+  // using the old static-sized approach since C++98 doesn't have initializer
+  // lists
+  size_t num_ranges;
+  bool is_noisy;
+  PaletteRange ranges[MAX_PALETTE_RANGES];
+};
 
 // clang-format off
-unsigned char pal_table[NUM_PALETTES][66] = {
-  { 5,
-    0,  31,
-    0,   0,   0,
-    0,   0,  63,
-
-    32,  63,
-    0,   0,  63,
-    0,   0,   0,
-
-    64,  95,
-    0,   0,   0,
-    63,   0,   0,
-
-    96, 127,
-    63,   0,   0,
-    0,   0,   0,
-
-    128, 255,
-    0,   0,   0,
-    63,  63,   0,
-
-    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1  },
-
-  { 5,
-    0,  31,
-    0,   0,   0,
-    21,   39,  23,
-
-    32,  63,
-    21,   39,  23,
-    63,   19,   0,
-
-    64,  95,
-    63,   19,   0,
-    32,   33,   27,
-
-    96, 127,
-    32,   33,   27,
-    26,   5,   18,
-
-    128, 255,
-    26,   5,   18,
-    63,  63,   0,
-
-    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1  },
-
-  { 5,
-    0,  31,
-    0,   0,   0,
-    21,   33,  40,
-
-    32,  63,
-    21,   33,  40,
-    12,   12,   20,
-
-    64,  110,
-    12,   12,   20,
-    43,   33,   38,
-
-    111, 127,
-    43,   33,   38,
-    63,   17,   3,
-
-    128, 255,
-    63,   17,   3,
-    54,  46,   30,
-
-    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1  },
-
-  { 5,
-    0,  31,
-    0,   0,   0,
-    57,   57,  63,
-
-    32,  63,
-    57,   57,  63,
-    0,   0,   0,
-
-    64,  110,
-    0,   0,   0,
-    63,   63,   63,
-
-    111, 127,
-    63,   63,   63,
-    0,   0,   0,
-
-    128, 255,
-    0,   0,   0,
-    63,  63,   63,
-
-    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0  }
-
+PaletteDef pal_table[] = {
+  { 5, true, {
+    { 0, 31,
+      {0,   0,   0},
+      {0,   0,  63},
+    },
+    {32,  63,
+      {0,   0,  63},
+      {0,   0,   0},
+    },
+    {64,  95,
+      {0,   0,   0},
+      {63,   0,   0},
+    },
+    {96, 127,
+      {63,   0,   0},
+      {0,   0,   0},
+    },
+    {128, 255,
+      {0,   0,   0},
+      {63,  63,   0},
+    },
+  }},
+  { 5, true, {
+    {0,  31,
+      {0,   0,   0},
+      {21,   39,  23},
+    },
+    {32,  63,
+      {21,   39,  23},
+      {63,   19,   0},
+    },
+    {64,  95,
+      {63,   19,   0},
+      {32,   33,   27},
+    },
+    {96, 127,
+      {32,   33,   27},
+      {26,   5,   18},
+    },
+    {128, 255,
+      {26,   5,   18},
+      {63,  63,   0},
+    },
+  }},
+  { 5, true, {
+    {0,  31,
+      {0,   0,   0},
+      {21,   33,  40},
+    },
+    {32,  63,
+      {21,   33,  40},
+      {12,   12,   20},
+    },
+    {64,  110,
+      {12,   12,   20},
+      {43,   33,   38},
+    },
+    {111, 127,
+      {43,   33,   38},
+      {63,   17,   3},
+    },
+    {128, 255,
+      {63,   17,   3},
+      {54,  46,   30},
+    },
+  }},
+  { 5, false, {
+    {0,  31,
+      {0,   0,   0},
+      {57,   57,  63},
+    },
+    {32,  63,
+      {57,   57,  63},
+      {0,   0,   0},
+    },
+    {64,  110,
+      {0,   0,   0},
+      {63,   63,   63},
+    },
+    {111, 127,
+      {63,   63,   63},
+      {0,   0,   0},
+    },
+    {128, 255,
+      {0,   0,   0},
+      {63,  63,   63},
+    },
+  }}
 };
 // clang-format on
+
+#define NUM_PALETTES (sizeof(pal_table) / sizeof(PaletteDef))
 
 byte *vga = (byte *)0xA0000000L; // location of video memory
 byte *d_buffer, *x_buffer;
@@ -513,25 +526,26 @@ int main(void) {
   return 0;
 }
 
-void make_palette(unsigned char *pal_data) {
-  char num_elems = pal_data[0], elem_start, elem_end, red_start, red_end,
-       green_start, green_end, blue_start, blue_end;
+void make_palette(PaletteDef const &pal_data) {
+  char elem_start, elem_end, red_start, red_end, green_start, green_end,
+      blue_start, blue_end;
 
   // TODO: interpolate instead of integrate
   float red_inc, green_inc, blue_inc, difference, working_red, working_green,
       working_blue;
 
-  for (int i = 1; i <= num_elems * 8; i += 8) {
-    elem_start = pal_data[i];
-    elem_end = pal_data[i + 1];
+  for (int i = 0; i <= pal_data.num_ranges; ++i) {
+    PaletteRange const &range = pal_data.ranges[i];
+    elem_start = range.first_index;
+    elem_end = range.last_index;
     difference = abs(elem_end - elem_start);
 
-    red_start = pal_data[i + 2];
-    green_start = pal_data[i + 3];
-    blue_start = pal_data[i + 4];
-    red_end = pal_data[i + 5];
-    green_end = pal_data[i + 6];
-    blue_end = pal_data[i + 7];
+    red_start = range.first_color.r;
+    green_start = range.first_color.g;
+    blue_start = range.first_color.b;
+    red_end = range.last_color.r;
+    green_end = range.last_color.g;
+    blue_end = range.last_color.b;
 
     working_red = red_start;
     if (working_red < 0)
@@ -579,10 +593,7 @@ void make_palette(unsigned char *pal_data) {
     }
   }
 
-  if (pal_data[65])
-    noisey = true;
-  else
-    noisey = false;
+  is_noisy = pal_data.is_noisy;
 }
 
 void blur(void) {
@@ -604,7 +615,7 @@ void blur(void) {
       new_color += x_buffer[target[x][y] - SCREEN_WIDTH];
 
       new_color = colors[new_color];
-      if (noisey)
+      if (is_noisy)
         new_color += get_rnd() % 2 - 1;
       if (new_color > 255) {
         new_color = 255;
