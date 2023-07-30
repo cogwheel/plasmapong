@@ -13,13 +13,13 @@ using std::uint8_t;
 // TODO: Rearrange so we don't need prototypes?
 
 // prototypes:
-void init(void);
-void blur(void);
+void init();
+void blur();
 struct PaletteDef;
 void make_palette(PaletteDef const &pal_data);
-inline void waves(void);
-inline void dots(void);
-inline void lines(void);
+inline void waves();
+inline void dots();
+inline void lines();
 
 template <typename T> inline T clamp(T val, T min, T max) {
   return val < min ? min : val > max ? max : val;
@@ -134,16 +134,17 @@ float neb_x[NEBULA_PARTICLES], neb_y[NEBULA_PARTICLES];
 uint8_t neb_a[NEBULA_PARTICLES];
 
 // TODO: these should be 256 not 255
-double cosTable[255], sinTable[255];
+#define NUM_ANGLES 256
+double cosTable[NUM_ANGLES], sinTable[NUM_ANGLES];
 
-inline int get_rnd(void) {
+inline int get_rnd() {
   if (++next_rnd_index >= MAX_RAND_NUMS) {
     next_rnd_index = 0;
   }
   return rnd_tbl[next_rnd_index];
 }
 
-void init_rnd(void) {
+void init_rnd() {
   next_rnd_index = 0;
   for (int i = 0; i < MAX_RAND_NUMS; i++) {
     rnd_tbl[i] = std::rand();
@@ -179,6 +180,8 @@ void init_rnd(void) {
 #define PALETTE_REGISTER_READ 0x03c7
 #define PALETTE_REGISTER_WRITE 0x03c8
 #define PALETTE_DATA 0x03c9
+
+#define TAU 6.2831853071795864
 
 int mouse_x, mouse_y;
 unsigned short target_x[SCREEN_WIDTH];
@@ -430,7 +433,7 @@ void line(uint8_t *buffer, int x1, int y1, int x2, int y2, uint8_t color) {
 
 #define START_SPEED 2.3
 
-int main(void) {
+int main() {
   uint8_t old_mode = get_mode();
 
   init();
@@ -634,7 +637,7 @@ void make_palette(PaletteDef const &pal_data) {
   is_noisy = pal_data.is_noisy;
 }
 
-void blur(void) {
+void blur() {
   /*   int rand_x=0, rand_y=0;
   rand_x=rand()%4-2; rand_y=rand()%4-2; */
   for (int y = 0; y < SCREEN_HEIGHT; y++) {
@@ -659,7 +662,7 @@ void blur(void) {
   }
 }
 
-void init(void) {
+void init() {
   score = 0;
   std::srand(15);
   init_rnd();
@@ -709,9 +712,10 @@ void init(void) {
     neb_a[i] = static_cast<uint8_t>(get_rnd() % 30 - 15);
   }
 
-  for (int i = 0; i != 255; i++) {
-    cosTable[i] = std::cos(((2 * 3.1415) / 256) * i);
-    sinTable[i] = std::sin(((2 * 3.1415) / 256) * i);
+  for (int i = 0; i < NUM_ANGLES; i++) {
+    const double radians = TAU * i / NUM_ANGLES;
+    cosTable[i] = std::cos(radians);
+    sinTable[i] = std::sin(radians);
   }
   curr_effect = 0;
 }
@@ -746,7 +750,7 @@ void draw_score(uint8_t *buffer, int x, int y) {
   } while (divisor > 0);
 }
 
-inline void waves(void) {
+inline void waves() {
   int vertices[11];
   for (int i = 0; i <= 10; i++) {
     vertices[i] = get_rnd() % 60 + 60;
@@ -756,7 +760,7 @@ inline void waves(void) {
   }
 }
 
-inline void dots(void) {
+inline void dots() {
   for (int i = 0; i < 8; i++) {
     int drop_x = get_rnd() % SCREEN_WIDTH, drop_y = get_rnd() % SCREEN_HEIGHT;
     set_pixel(x_buffer, drop_x, drop_y, MAX_COLOR);
@@ -767,7 +771,7 @@ inline void dots(void) {
   }
 }
 
-inline void lines(void) {
+inline void lines() {
 
   line(x_buffer, get_rnd() % SCREEN_WIDTH, get_rnd() % SCREEN_HEIGHT,
        get_rnd() % SCREEN_WIDTH, get_rnd() % SCREEN_HEIGHT,
