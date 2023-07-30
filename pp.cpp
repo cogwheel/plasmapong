@@ -36,8 +36,13 @@ int curr_effect;
 
 int score;
 
+#define DIGIT_WIDTH 5
+#define DIGIT_HEIGHT 7
+#define DIGIT_SIZE (DIGIT_WIDTH * DIGIT_HEIGHT)
+#define DIGIT_SPACING 7
+
 // clang-format off
-unsigned char digit_sprites[10][7][5] = {
+unsigned char digit_sprites[][DIGIT_HEIGHT][DIGIT_WIDTH] = {
   { 0, 255, 255, 255, 0,
     255, 0, 0, 0, 255,
     255, 0, 0, 0, 255,
@@ -116,8 +121,10 @@ unsigned char digit_sprites[10][7][5] = {
     0, 255, 255, 255, 255,
     0, 0, 0, 0, 255,
     255, 0, 0, 0, 255,
-    0, 255, 255, 255, 0 } };
+    0, 255, 255, 255, 0 }
+};
 // clang-format on
+#define NUM_DIGITS (sizeof(digit_sprites) / DIGIT_SIZE)
 
 int rnd_tbl[1024];
 int locc;
@@ -176,7 +183,7 @@ float ball_x, ball_y, ball_x_delta, ball_y_delta, x_temp, y_temp;
 typedef unsigned char byte;
 typedef unsigned short word;
 
-void draw_text(byte *buffer, int x, int y);
+void draw_score(byte *buffer, int x, int y);
 
 #define MAX_PALETTE_RANGES 8
 
@@ -437,10 +444,10 @@ int main(void) {
         ball_y_delta = (get_rnd() % 2) ? 2.3 : -2.3;
         speed = 2.3;
         for (; score > 0; score--) {
-          draw_text(x_buffer, 150, 91);
+          draw_score(x_buffer, 150, 91);
           blur();
           show_buffer(d_buffer);
-          draw_text(x_buffer, 150, 91);
+          draw_score(x_buffer, 150, 91);
           blur();
           show_buffer(d_buffer);
         }
@@ -491,7 +498,7 @@ int main(void) {
 
     blur();
 
-    draw_text(d_buffer, 10, 10);
+    draw_score(d_buffer, 10, 10);
 
     line(d_buffer, 319 - (mouse_x - 16), 10, 319 - (mouse_x + 16), 10, 255);
     line(d_buffer, mouse_x - 16, 190, mouse_x + 16, 190, 255);
@@ -701,19 +708,34 @@ inline void waves(void) {
   set_pixel(x_buffer, drop_x, drop_y - 1, 255);
 }
 
-void draw_text(byte *buffer, int x, int y) {
-  char text[6];
-
-  sprintf(text, "%d", score);
-
-  for (int i = 0; i < strlen(text); i++) {
-    for (int y_loop = 0; y_loop < 7; y_loop++) {
-      for (int x_loop = 0; x_loop < 5; x_loop++) {
-        set_pixel(buffer, x_loop + x + (i * 7), y_loop + y,
-                  digit_sprites[text[i] - 48][y_loop][x_loop]);
-      }
+inline void draw_digit(byte *buffer, int x, int y, int digit) {
+  for (int y_loop = 0; y_loop < DIGIT_HEIGHT; y_loop++) {
+    for (int x_loop = 0; x_loop < DIGIT_WIDTH; x_loop++) {
+      set_pixel(buffer, x_loop + x, y_loop + y,
+                digit_sprites[digit][y_loop][x_loop]);
     }
   }
+}
+
+void draw_score(byte *buffer, int x, int y) {
+  if (score == 0) {
+    draw_digit(buffer, x, y, 0);
+    return;
+  }
+
+  int divisor = 10000; // Max 16-bit power of 10
+  while (divisor > score) {
+    divisor /= 10;
+  }
+  int value = score;
+  int offset = 0;
+  do {
+    int digit = value / divisor;
+    draw_digit(buffer, x + offset, y, digit);
+    offset += DIGIT_SPACING;
+    value %= divisor;
+    divisor /= 10;
+  } while (divisor > 0);
 }
 
 inline void dots(void) {
