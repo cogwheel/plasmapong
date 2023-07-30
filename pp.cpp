@@ -26,6 +26,10 @@ inline void waves(void);
 inline void dots(void);
 inline void lines(void);
 
+template <typename T> inline T clamp(T val, T min, T max) {
+  return val < min ? min : val > max ? max : val;
+}
+
 #define NUM_EFFECTS 3
 
 int curr_effect;
@@ -142,7 +146,8 @@ void init_rnd(void) {
 }
 
 int mouse_x, mouse_y;
-unsigned short **target /*target_x[320],target_y[200],*/;
+unsigned short target_x[320];
+unsigned short target_y[200];
 short colors[12 * 255];
 
 float ball_x, ball_y, ball_x_delta, ball_y_delta, x_temp, y_temp;
@@ -192,7 +197,7 @@ struct PaletteRange {
 struct PaletteDef {
   // using the old static-sized approach since C++98 doesn't have initializer
   // lists
-  size_t num_ranges;
+  int num_ranges;
   bool is_noisy;
   PaletteRange ranges[MAX_PALETTE_RANGES];
 };
@@ -518,11 +523,6 @@ int main(void) {
     show_buffer(d_buffer);
   }
 
-  for (int i = 0; i < 320; i++) {
-    delete target[i];
-  }
-  delete[] target;
-
   return 0;
 }
 
@@ -597,22 +597,21 @@ void make_palette(PaletteDef const &pal_data) {
 }
 
 void blur(void) {
-  int new_color;
-
   /*   int rand_x=0, rand_y=0;
   rand_x=rand()%4-2; rand_y=rand()%4-2; */
   for (int y = 0; y < 200; y++) {
     for (int x = 0; x < 320; x++) {
 
-      new_color = 0;
+      int new_color = 0;
+      int index = target_y[y] + target_x[x];
 
-      new_color += (x_buffer[target[x][y]]) << 3;
+      new_color += (x_buffer[index]) << 3;
 
-      new_color += x_buffer[target[x][y] + 1];
-      new_color += x_buffer[target[x][y] + SCREEN_WIDTH];
+      new_color += x_buffer[index + 1];
+      new_color += x_buffer[index + SCREEN_WIDTH];
 
-      new_color += x_buffer[target[x][y] - 1];
-      new_color += x_buffer[target[x][y] - SCREEN_WIDTH];
+      new_color += x_buffer[index - 1];
+      new_color += x_buffer[index - SCREEN_WIDTH];
 
       new_color = colors[new_color];
       if (is_noisy)
@@ -639,44 +638,15 @@ void init(void) {
   make_palette(pal_table[get_rnd() % NUM_PALETTES]);
   curr_effect = get_rnd() % NUM_EFFECTS + 1;
 
-  int x, y;
-  double newx, newy;
-
-  target = new unsigned short *[320];
-  if (!target) {
-    fprintf(stderr, "Unable to allocate target array 1");
-    exit(1);
-  }
   for (int i = 0; i < 320; i++) {
-    target[i] = new unsigned short[200];
-    if (!target) {
-      fprintf(stderr, "Unable to allocate target array 2");
-      exit(2);
-    }
+    short target = ((i - 160) / 1.03) + 160;
+    target_x[i] = clamp<short>(target, 0, SCREEN_WIDTH);
   }
 
-  for (y = 0; y < 200; y++) {
-    for (x = 0; x < 320; x++) {
-      newx = ((x - 160) / 1.03) + 160;
-      newy = ((y - 100) / 1.03) + 100;
-      newx = newx > 319 ? 319 : (unsigned short)(newx);
-      newx = newx < 0 ? 0 : (unsigned short)(newx);
-      newy = newy > 199 ? 199 : (unsigned short)(newy);
-      newy = newy < 0 ? 0 : (unsigned short)(newy);
-      target[x][y] = (newy * 320) + newx;
-    }
+  for (int i = 0; i < 200; i++) {
+    short target = (((i - 100) / 1.03) + 100);
+    target_y[i] = SCREEN_WIDTH * clamp<short>(target, 0, SCREEN_HEIGHT);
   }
-
-  /*  for(int i=0; i <320; i++)
-    {
-       target_x[i] = ((i - 160)/1.03)+160;
-    }
-
-    for(int i=0; i <200; i++)
-    {
-       target_y[i] = ((i - 100)/1.03)+100;
-    }
-    */
 
   for (int i = 0; i < (12 * 255); i++) {
     colors[i] = i / 12.1;
@@ -722,7 +692,7 @@ inline void waves(void) {
 void draw_text(byte *buffer, int x, int y) {
   char text[6];
 
-  sprintf(text, "%d", target[313][20]);
+  sprintf(text, "%d", score);
 
   for (int i = 0; i < strlen(text); i++) {
     for (int y_loop = 0; y_loop < 7; y_loop++) {
