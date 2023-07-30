@@ -16,8 +16,6 @@ using std::uint8_t;
 // prototypes:
 void init(void);
 void blur(void);
-void init_rnd(void);
-inline int get_rnd(void);
 struct PaletteDef;
 void make_palette(PaletteDef const &pal_data);
 inline void waves(void);
@@ -132,9 +130,9 @@ int next_rnd_index;
 float speed;
 bool is_noisy;
 
-float neb_x[25], neb_y[25];
-float neb_dx[25], neb_dy[25];
-unsigned char neb_a[25];
+#define NEBULA_PARTICLES 25
+float neb_x[NEBULA_PARTICLES], neb_y[NEBULA_PARTICLES];
+unsigned char neb_a[NEBULA_PARTICLES];
 
 double cosTable[255], sinTable[255];
 
@@ -512,17 +510,14 @@ int main(void) {
     }
 
     float tempX;
-    for (int i = 0; i < 25; i++) {
+    for (int i = 0; i < NEBULA_PARTICLES; i++) {
 
       tempX = neb_x[i];
 
       neb_x[i] = neb_x[i] * cosTable[neb_a[i]] - neb_y[i] * sinTable[neb_a[i]];
       neb_y[i] = neb_y[i] * cosTable[neb_a[i]] + tempX * sinTable[neb_a[i]];
 
-      neb_dx[i] = neb_x[i] + ball_x;
-      neb_dy[i] = neb_y[i] + ball_y;
-
-      set_pixel(d_buffer, neb_dx[i], neb_dy[i], 255);
+      set_pixel(d_buffer, neb_x[i] + ball_x, neb_y[i] + ball_y, 255);
     }
 
     show_buffer(d_buffer);
@@ -677,9 +672,7 @@ void init(void) {
   ball_x_delta = (get_rnd() % 2) ? 2.3 : -2.3;
   ball_y_delta = (get_rnd() % 2) ? 2.3 : -2.3;
 
-  for (int i = 0; i < 25; i++) {
-    // neb_x[i] = get_rnd()%40-20;
-    // neb_y[i] = get_rnd()%40-20;
+  for (int i = 0; i < NEBULA_PARTICLES; i++) {
     neb_x[i] = get_rnd() % 3 - 5;
     neb_y[i] = get_rnd() % 3 - 5;
     neb_a[i] = static_cast<byte>(get_rnd() % 30 - 15);
