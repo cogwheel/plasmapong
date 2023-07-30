@@ -730,8 +730,8 @@ inline void draw_digit(uint8_t *buffer, int x, int y, int digit) {
 }
 
 void draw_score(uint8_t *buffer, int x, int y) {
-  if (score == 0) {
-    draw_digit(buffer, x, y, 0);
+  if (score < 10) {
+    draw_digit(buffer, x, y, score);
     return;
   }
 
