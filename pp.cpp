@@ -437,6 +437,11 @@ int main(void) {
 
   init();
 
+  if (get_mode() != VGA_256_COLOR_MODE) {
+    fprintf(stderr, "Unable to set 320x200x256 color mode\n");
+    exit(1);
+  }
+
   union REGS r;
   r.x.bx = 0;
   while (r.x.bx != 3) {
