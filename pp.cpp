@@ -717,22 +717,6 @@ void init(void) {
   curr_effect = 0;
 }
 
-inline void waves(void) {
-  int vertices[11];
-  for (int i = 0; i <= 10; i++) {
-    vertices[i] = get_rnd() % 60 + 60;
-  }
-  for (int i = 0; i < 10; i++) {
-    line(x_buffer, i * 32, vertices[i], i * 32 + 32, vertices[i + 1], 128);
-  }
-  int drop_x = get_rnd() % MAX_X, drop_y = get_rnd() % 119;
-  set_pixel(x_buffer, drop_x, drop_y, MAX_COLOR);
-  set_pixel(x_buffer, drop_x + 1, drop_y, MAX_COLOR);
-  set_pixel(x_buffer, drop_x - 1, drop_y, MAX_COLOR);
-  set_pixel(x_buffer, drop_x, drop_y + 1, MAX_COLOR);
-  set_pixel(x_buffer, drop_x, drop_y - 1, MAX_COLOR);
-}
-
 inline void draw_digit(uint8_t *buffer, int x, int y, int digit) {
   for (int y_loop = 0; y_loop < DIGIT_HEIGHT; y_loop++) {
     for (int x_loop = 0; x_loop < DIGIT_WIDTH; x_loop++) {
@@ -761,6 +745,16 @@ void draw_score(uint8_t *buffer, int x, int y) {
     value %= divisor;
     divisor /= 10;
   } while (divisor > 0);
+}
+
+inline void waves(void) {
+  int vertices[11];
+  for (int i = 0; i <= 10; i++) {
+    vertices[i] = get_rnd() % 60 + 60;
+  }
+  for (int i = 0; i < 10; i++) {
+    line(x_buffer, i * 32, vertices[i], i * 32 + 32, vertices[i + 1], 128);
+  }
 }
 
 inline void dots(void) {
