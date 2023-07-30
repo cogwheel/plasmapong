@@ -410,6 +410,24 @@ void line(uint8_t *buffer, int x1, int y1, int x2, int y2, uint8_t color) {
 
 ///--------------main stuff
 
+// TODO: convert defines to consts?
+
+#define COLLISION_THRESHOLD 15
+
+// Visual
+#define PADDLE_MARGIN 10
+#define HALF_PADDLE 16
+
+// Physical
+#define PADDLE_MARGIN_HIT 13
+#define HALF_PADDLE_HIT 18
+
+#define SCORE_X 10
+#define SCORE_Y 10
+
+#define COUNTDOWN_X 150
+#define COUNTDOWN_Y 91
+
 int main(void) {
   uint8_t old_mode = get_mode();
 
@@ -421,6 +439,8 @@ int main(void) {
     r.x.ax = 3;
     int86(0x33, &r, &r);
 
+    // I *think* this magic math normalizes the mouse coordinates to the range
+    // of the paddles
     mouse_x = r.x.cx * 0.420062695924 + 26;
     mouse_y = r.x.dx * 0.74 + 26;
 
@@ -442,7 +462,12 @@ int main(void) {
     ball_x += ball_x_delta;
     ball_y += ball_y_delta;
 
-    if (ball_x > 305 || ball_x < 15 || ball_y > 185 || ball_y < 15) {
+    // TODO: De-nest these ifs (outer one seems redundant; might be
+    // optimization)
+    if (ball_x > (SCREEN_WIDTH - COLLISION_THRESHOLD) ||
+        ball_x < COLLISION_THRESHOLD ||
+        ball_y > (SCREEN_HEIGHT - COLLISION_THRESHOLD) ||
+        ball_y < COLLISION_THRESHOLD) {
       if (ball_x >= SCREEN_WIDTH || ball_x < 0 || ball_y >= SCREEN_HEIGHT ||
           ball_y < 0) {
         ball_x = MID_X;
@@ -450,11 +475,13 @@ int main(void) {
         ball_x_delta = (get_rnd() % 2) ? 2.3 : -2.3;
         ball_y_delta = (get_rnd() % 2) ? 2.3 : -2.3;
         speed = 2.3;
+        // TODO: Use a state machine or something so that input is still
+        // processed while score is counting
         for (; score > 0; score--) {
-          draw_score(x_buffer, 150, 91);
+          draw_score(x_buffer, COUNTDOWN_X, COUNTDOWN_Y);
           blur();
           show_buffer(d_buffer);
-          draw_score(x_buffer, 150, 91);
+          draw_score(x_buffer, COUNTDOWN_X, COUNTDOWN_Y);
           blur();
           show_buffer(d_buffer);
         }
@@ -463,7 +490,8 @@ int main(void) {
         curr_effect = get_rnd() % NUM_EFFECTS;
         score = 0;
       }
-      if (ball_y > (mouse_y - 18) && ball_y < (mouse_y + 18) && ball_x < 13) {
+      if (ball_y > (mouse_y - HALF_PADDLE_HIT) &&
+          ball_y < (mouse_y + HALF_PADDLE_HIT) && ball_x < PADDLE_MARGIN_HIT) {
         speed += .05;
         ball_x_delta = speed;
         ball_x = x_temp;
@@ -471,8 +499,9 @@ int main(void) {
         make_palette(pal_table[get_rnd() % NUM_PALETTES]);
         curr_effect = get_rnd() % NUM_EFFECTS;
         score++;
-      } else if (ball_y < (MAX_Y - (mouse_y - 18)) &&
-                 ball_y > (MAX_Y - (mouse_y + 18)) && ball_x > 307) {
+      } else if (ball_y < (MAX_Y - (mouse_y - HALF_PADDLE_HIT)) &&
+                 ball_y > (MAX_Y - (mouse_y + HALF_PADDLE_HIT)) &&
+                 ball_x > (SCREEN_WIDTH - PADDLE_MARGIN_HIT)) {
         speed += .05;
         ball_x_delta = -1 * speed;
         ball_x = x_temp;
@@ -480,8 +509,9 @@ int main(void) {
         make_palette(pal_table[get_rnd() % NUM_PALETTES]);
         curr_effect = get_rnd() % NUM_EFFECTS;
         score++;
-      } else if (ball_x < (MAX_X - (mouse_x - 18)) &&
-                 ball_x > (MAX_X - (mouse_x + 18)) && ball_y < 13) {
+      } else if (ball_x < (MAX_X - (mouse_x - HALF_PADDLE_HIT)) &&
+                 ball_x > (MAX_X - (mouse_x + HALF_PADDLE_HIT)) &&
+                 ball_y < PADDLE_MARGIN_HIT) {
         speed += .05;
         ball_y_delta = speed;
         ball_y = y_temp;
@@ -489,8 +519,9 @@ int main(void) {
         make_palette(pal_table[get_rnd() % NUM_PALETTES]);
         score++;
         curr_effect = get_rnd() % NUM_EFFECTS;
-      } else if (ball_x > (mouse_x - 18) && ball_x < (mouse_x + 18) &&
-                 ball_y > 188) {
+      } else if (ball_x > (mouse_x - HALF_PADDLE_HIT) &&
+                 ball_x < (mouse_x + HALF_PADDLE_HIT) &&
+                 ball_y >= (SCREEN_HEIGHT - PADDLE_MARGIN_HIT)) {
         speed += .05;
         ball_y_delta = -1 * speed;
         ball_y = y_temp;
@@ -503,21 +534,25 @@ int main(void) {
 
     blur();
 
-    draw_score(d_buffer, 10, 10);
+    draw_score(d_buffer, SCORE_X, SCORE_Y);
 
     // draw paddles
 
     // TOP
-    line(d_buffer, MAX_X - (mouse_x - 16), 10, MAX_X - (mouse_x + 16), 10,
-         MAX_COLOR);
+    line(d_buffer, MAX_X - (mouse_x - HALF_PADDLE), PADDLE_MARGIN,
+         MAX_X - (mouse_x + HALF_PADDLE), PADDLE_MARGIN, MAX_COLOR);
     // BOTTOM
-    line(d_buffer, mouse_x - 16, 190, mouse_x + 16, 190, MAX_COLOR);
+    line(d_buffer, mouse_x - HALF_PADDLE, SCREEN_HEIGHT - PADDLE_MARGIN,
+         mouse_x + HALF_PADDLE, SCREEN_HEIGHT - PADDLE_MARGIN, MAX_COLOR);
     // LEFT
-    line(d_buffer, 10, mouse_y - 16, 10, mouse_y + 16, MAX_COLOR);
+    line(d_buffer, PADDLE_MARGIN, mouse_y - HALF_PADDLE, PADDLE_MARGIN,
+         mouse_y + HALF_PADDLE, MAX_COLOR);
     // RIGHT
-    line(d_buffer, 310, MAX_Y - (mouse_y - 16), 310, MAX_Y - (mouse_y + 16),
-         MAX_COLOR);
+    line(d_buffer, SCREEN_WIDTH - PADDLE_MARGIN,
+         MAX_Y - (mouse_y - HALF_PADDLE), SCREEN_WIDTH - PADDLE_MARGIN,
+         MAX_Y - (mouse_y + HALF_PADDLE), MAX_COLOR);
 
+    // Draw "nucleus" (i think?)
     for (int i = 0; i < 5; i++) {
       line(d_buffer, (int)ball_x + get_rnd() % 6 - 3,
            (int)ball_y + get_rnd() % 6 - 3, (int)ball_x + get_rnd() % 6 - 3,
