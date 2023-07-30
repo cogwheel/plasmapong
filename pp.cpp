@@ -124,8 +124,11 @@ unsigned char digit_sprites[][DIGIT_HEIGHT][DIGIT_WIDTH] = {
 // clang-format on
 #define NUM_DIGITS (sizeof(digit_sprites) / DIGIT_SIZE)
 
-int rnd_tbl[1024];
-int locc;
+// 1021 is prime so it should be hard to stumble upon cycles
+#define MAX_RAND_NUMS 1021
+
+int rnd_tbl[MAX_RAND_NUMS];
+int next_rnd_index;
 float speed;
 bool is_noisy;
 
@@ -136,16 +139,15 @@ unsigned char neb_a[25];
 double cosTable[255], sinTable[255];
 
 inline int get_rnd(void) {
-  int ret = rnd_tbl[locc++];
-  if (locc > 1024) {
-    locc ^= locc;
+  if (++next_rnd_index >= MAX_RAND_NUMS) {
+    next_rnd_index = 0;
   }
-  return ret;
+  return rnd_tbl[next_rnd_index];
 }
 
 void init_rnd(void) {
-  locc = 0;
-  for (int i = 0; i < 1024; i++) {
+  next_rnd_index = 0;
+  for (int i = 0; i < MAX_RAND_NUMS; i++) {
     rnd_tbl[i] = rand();
   }
 }
