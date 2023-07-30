@@ -155,6 +155,7 @@ float ball_x, ball_y, ball_x_delta, ball_y_delta, x_temp, y_temp;
 #define VIDEO_INT 0x10          // the BIOS video interrupt.
 #define WRITE_DOT 0x0C          // BIOS func to plot a pixel.
 #define SET_MODE 0x00           // BIOS func to set the video mode.
+#define GET_MODE 0x0F           // BIOS func to get the video mode.
 #define VGA_256_COLOR_MODE 0x13 // use to set 256-color mode.
 #define TEXT_MODE 0x03          // use to set 80x25 text mode.
 
@@ -300,12 +301,18 @@ PaletteDef pal_table[] = {
 byte *vga = (byte *)0xA0000000L; // location of video memory
 byte *d_buffer, *x_buffer;
 
-void set_mode(byte mode);
 void set_pixel(byte *buffer, int x, int y, byte color);
 void show_buffer(byte *buffer);
 void s_pal_entry(unsigned char index, unsigned char red, unsigned char green,
                  unsigned char blue);
 void line(byte *buffer, int x1, int y1, int x2, int y2, unsigned char color);
+
+byte get_mode() {
+  REGS regs;
+  regs.h.ah = GET_MODE;
+  int86(VIDEO_INT, &regs, &regs);
+  return regs.h.al;
+}
 
 void set_mode(byte mode) {
   union REGS regs;
@@ -313,17 +320,6 @@ void set_mode(byte mode) {
   regs.h.ah = SET_MODE;
   regs.h.al = mode;
   int86(VIDEO_INT, &regs, &regs);
-
-  // allocate mem for the d_buffer
-  if ((d_buffer = (byte *)malloc(SCREEN_SIZE)) == NULL) {
-    printf("Not enough memory for double buffer.\n");
-    exit(1);
-  }
-
-  if ((x_buffer = (byte *)malloc(SCREEN_SIZE)) == NULL) {
-    printf("Not enough memory for double buffer.\n");
-    exit(1);
-  }
 }
 
 inline void set_pixel(byte *buffer, int x, int y, byte color) {
@@ -402,6 +398,8 @@ void line(byte *buffer, int x1, int y1, int x2, int y2, unsigned char color) {
 ///--------------main stuff
 
 int main(void) {
+  byte old_mode = get_mode();
+
   init();
 
   union REGS r;
@@ -523,6 +521,8 @@ int main(void) {
     show_buffer(d_buffer);
   }
 
+  set_mode(old_mode);
+
   return 0;
 }
 
@@ -631,10 +631,22 @@ void init(void) {
   score = 0;
   srand(15);
   init_rnd();
-  set_mode(VGA_256_COLOR_MODE);
+
+  // allocate mem for the d_buffer
+  if ((d_buffer = (byte *)malloc(SCREEN_SIZE)) == NULL) {
+    printf("Not enough memory for double buffer.\n");
+    exit(1);
+  }
+
+  if ((x_buffer = (byte *)malloc(SCREEN_SIZE)) == NULL) {
+    printf("Not enough memory for double buffer.\n");
+    exit(1);
+  }
+
   memset(d_buffer, 0, SCREEN_SIZE);
   memset(x_buffer, 0, SCREEN_SIZE);
 
+  set_mode(VGA_256_COLOR_MODE);
   make_palette(pal_table[get_rnd() % NUM_PALETTES]);
   curr_effect = get_rnd() % NUM_EFFECTS + 1;
 
