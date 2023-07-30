@@ -5,8 +5,6 @@
 #include <mem.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <string.h>
-#include <time.h>
 
 #include <conio.h>
 #include <dos.h>
@@ -641,12 +639,12 @@ void init(void) {
 
   // allocate mem for the d_buffer
   if ((d_buffer = (byte *)malloc(SCREEN_SIZE)) == NULL) {
-    printf("Not enough memory for double buffer.\n");
+    fprintf(stderr, "Not enough memory for double buffer.\n");
     exit(1);
   }
 
   if ((x_buffer = (byte *)malloc(SCREEN_SIZE)) == NULL) {
-    printf("Not enough memory for double buffer.\n");
+    fprintf(stderr, "Not enough memory for double buffer.\n");
     exit(1);
   }
 
