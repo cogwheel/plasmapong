@@ -187,9 +187,9 @@ int mouse_x, mouse_y;
 unsigned short target_x[SCREEN_WIDTH];
 unsigned short target_y[SCREEN_HEIGHT];
 
-// TODO: this should have a better name like `color_normalization`. It is a
-// lookup table for taking the weighted sum around a target pixel
-short colors[12 * MAX_COLOR];
+#define MAX_WEIGHT 12
+#define DIM_AMOUNT 0.1
+short weighted_averages[MAX_WEIGHT * MAX_COLOR];
 
 float ball_x, ball_y, ball_x_delta, ball_y_delta, x_temp, y_temp;
 
@@ -433,6 +433,18 @@ void line(uint8_t *buffer, int x1, int y1, int x2, int y2, uint8_t color) {
 
 #define START_SPEED 2.3
 
+void init_game() {
+  init_rnd();
+  ball_x = MID_X;
+  ball_y = MID_Y;
+  ball_x_delta = (get_rnd() % 2) ? START_SPEED : -START_SPEED;
+  ball_y_delta = (get_rnd() % 2) ? START_SPEED : -START_SPEED;
+  speed = START_SPEED;
+  make_palette(pal_table[get_rnd() % NUM_PALETTES]);
+  curr_effect = get_rnd() % NUM_EFFECTS;
+  score = 0;
+}
+
 int main() {
   uint8_t old_mode = get_mode();
 
@@ -480,11 +492,6 @@ int main() {
         ball_y < COLLISION_THRESHOLD) {
       if (ball_x >= SCREEN_WIDTH || ball_x < 0 || ball_y >= SCREEN_HEIGHT ||
           ball_y < 0) {
-        ball_x = MID_X;
-        ball_y = MID_Y;
-        ball_x_delta = (get_rnd() % 2) ? START_SPEED : -START_SPEED;
-        ball_y_delta = (get_rnd() % 2) ? START_SPEED : -START_SPEED;
-        speed = START_SPEED;
         // TODO: Use a state machine or something so that input is still
         // processed while score is counting
         for (; score > 0; score--) {
@@ -495,10 +502,7 @@ int main() {
           blur();
           show_buffer(d_buffer);
         }
-        init_rnd();
-        make_palette(pal_table[get_rnd() % NUM_PALETTES]);
-        curr_effect = get_rnd() % NUM_EFFECTS;
-        score = 0;
+        init_game();
       }
       if (ball_y > (mouse_y - HALF_PADDLE_HIT) &&
           ball_y < (mouse_y + HALF_PADDLE_HIT) && ball_x < PADDLE_MARGIN_HIT) {
@@ -538,7 +542,7 @@ int main() {
         ball_x_delta = (ball_x - mouse_x) / 4;
         make_palette(pal_table[get_rnd() % NUM_PALETTES]);
         score++;
-        curr_effect = get_rnd() % NUM_EFFECTS + 1;
+        curr_effect = get_rnd() % NUM_EFFECTS;
       }
     }
 
@@ -643,30 +647,28 @@ void blur() {
   for (int y = 0; y < SCREEN_HEIGHT; y++) {
     for (int x = 0; x < SCREEN_WIDTH; x++) {
 
-      int new_color = 0;
-      int index = target_y[y] + target_x[x];
+      int weighted_sum = 0;
+      const int index = target_y[y] + target_x[x];
 
-      new_color += (x_buffer[index]) << 3;
+      // Center pixel gets 8x weight
+      weighted_sum += (x_buffer[index]) << 3;
 
-      new_color += x_buffer[index + 1];
-      new_color += x_buffer[index + SCREEN_WIDTH];
+      // Top, bottom, left, right get 1x weight
+      weighted_sum += x_buffer[index + 1];
+      weighted_sum += x_buffer[index + SCREEN_WIDTH];
 
-      new_color += x_buffer[index - 1];
-      new_color += x_buffer[index - SCREEN_WIDTH];
+      weighted_sum += x_buffer[index - 1];
+      weighted_sum += x_buffer[index - SCREEN_WIDTH];
 
-      new_color = colors[new_color];
+      int target_color = weighted_averages[weighted_sum];
       if (is_noisy)
-        new_color = clamp(new_color + get_rnd() % 2 - 1, 0, MAX_COLOR);
-      set_pixel(d_buffer, x, y, static_cast<uint8_t>(new_color));
+        target_color = clamp(target_color + get_rnd() % 2 - 1, 0, MAX_COLOR);
+      set_pixel(d_buffer, x, y, static_cast<uint8_t>(target_color));
     }
   }
 }
 
 void init() {
-  score = 0;
-  std::srand(15);
-  init_rnd();
-
   // allocate mem for the d_buffer
   if ((d_buffer = new uint8_t[SCREEN_SIZE]) == NULL) {
     std::cout << "Not enough memory for front buffer.\n";
@@ -682,8 +684,6 @@ void init() {
   std::memset(x_buffer, 0, SCREEN_SIZE);
 
   set_mode(VGA_256_COLOR_MODE);
-  make_palette(pal_table[get_rnd() % NUM_PALETTES]);
-  curr_effect = get_rnd() % NUM_EFFECTS + 1;
 
   for (int i = 0; i < SCREEN_WIDTH; i++) {
     short target = ((i - MID_X) / 1.03) + MID_X;
@@ -695,21 +695,9 @@ void init() {
     target_y[i] = SCREEN_WIDTH * clamp<short>(target, 0, SCREEN_HEIGHT);
   }
 
-  for (int i = 0; i < (12 * MAX_COLOR); i++) {
-    colors[i] = i / 12.1;
-  }
-
-  ball_x = MID_X;
-  ball_y = MID_Y;
-  speed = START_SPEED;
-  ball_x_delta = (get_rnd() % 2) ? START_SPEED : -START_SPEED;
-  ball_y_delta = (get_rnd() % 2) ? START_SPEED : -START_SPEED;
-
-  for (int i = 0; i < NEBULA_PARTICLES; i++) {
-    neb_x[i] = get_rnd() % 3 - 5;
-    neb_y[i] = get_rnd() % 3 - 5;
-    // Take advantage of uint underflow to create complementary angles
-    neb_a[i] = static_cast<uint8_t>(get_rnd() % 30 - 15);
+  for (int i = 0; i < (MAX_WEIGHT * MAX_COLOR); i++) {
+    // TODO: DIM_AMOUNT should be subtracted instead of divided maybe?
+    weighted_averages[i] = i / (MAX_WEIGHT + DIM_AMOUNT);
   }
 
   for (int i = 0; i < NUM_ANGLES; i++) {
@@ -717,7 +705,16 @@ void init() {
     cosTable[i] = std::cos(radians);
     sinTable[i] = std::sin(radians);
   }
-  curr_effect = 0;
+
+  std::srand(15);
+  init_game();
+
+  for (int i = 0; i < NEBULA_PARTICLES; i++) {
+    neb_x[i] = get_rnd() % 3 - 5;
+    neb_y[i] = get_rnd() % 3 - 5;
+    // Take advantage of uint underflow to create complementary angles
+    neb_a[i] = static_cast<uint8_t>(get_rnd() % 30 - 15);
+  }
 }
 
 inline void draw_digit(uint8_t *buffer, int x, int y, int digit) {
