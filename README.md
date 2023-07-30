@@ -5,6 +5,8 @@ My attempt to clean up an ancient DOS game a friend and I made in high school.
 ## Goals
 
 - Rename, rearrange, reformat, and refactor things to be more sane, but still one file
+    - [ ] Magic numbers -> constants
+    - [ ] Deduplicate code
 - [X] Get it running under FreeDOS with OpenWatcom compiler
 - Fix game-breaking problems
     - [X] Score display
@@ -32,3 +34,10 @@ TODO:
 I am using FreeDOS on VMWare with the project directory mounted as a shared folder using vmsmount. After building the program on the host, I can run `pp.exe` inside the VM.
 
 To exit, click both left and right mouse buttons simultaneously.
+
+
+## Known issues
+
+* Inputs ignored (can't exit) while score is counting down after a game
+* Blur effect isn't centered on the screen
+* Score is not very legible, especially during countdown

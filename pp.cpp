@@ -1,5 +1,6 @@
 //// TODO: fix indentation (tab stop is 3!!)
 
+#include <cassert>
 #include <cstdint>
 #include <math.h>
 #include <mem.h>
@@ -170,6 +171,7 @@ void init_rnd(void) {
 
 #define NUM_COLORS 256 // number of colors in mode 0x13
 #define MAX_COLOR (NUM_COLORS - 1)
+#define MAX_COLOR_COMPONENT 63 // RGB components in the palette
 
 #define DISPLAY_ENABLE 0x01 // VGA input status bits
 #define INPUT_STATUS 0x03da
@@ -578,9 +580,19 @@ int main(void) {
   return 0;
 }
 
+template <typename T> T clamp_color(T color) {
+  return color < 0                     ? 0
+         : color > MAX_COLOR_COMPONENT ? MAX_COLOR_COMPONENT
+                                       : color;
+}
+
+uint8_t assert_color(uint8_t color) {
+  assert(color <= MAX_COLOR_COMPONENT);
+  return color;
+}
+
 void make_palette(PaletteDef const &pal_data) {
-  uint8_t elem_start, elem_end, red_start, red_end, green_start, green_end,
-      blue_start, blue_end;
+  uint8_t elem_start, elem_end, red_end, green_end, blue_end;
 
   // TODO: interpolate instead of integrate
   float red_inc, green_inc, blue_inc, difference, working_red, working_green,
@@ -592,56 +604,25 @@ void make_palette(PaletteDef const &pal_data) {
     elem_end = range.last_index;
     difference = abs(elem_end - elem_start);
 
-    red_start = range.first_color.r;
-    green_start = range.first_color.g;
-    blue_start = range.first_color.b;
-    red_end = range.last_color.r;
-    green_end = range.last_color.g;
-    blue_end = range.last_color.b;
+    working_red = assert_color(range.first_color.r);
+    working_green = assert_color(range.first_color.g);
+    working_blue = assert_color(range.first_color.b);
+    red_end = assert_color(range.last_color.r);
+    green_end = assert_color(range.last_color.g);
+    blue_end = assert_color(range.last_color.b);
 
-    working_red = red_start;
-    if (working_red < 0)
-      working_red = 0;
-    else if (working_red > 63)
-      working_red = 63;
-    red_inc = (float)(red_end - red_start) / (float)difference;
-
-    working_green = green_start;
-    if (working_green < 0)
-      working_green = 0;
-    else if (working_green > 63)
-      working_green = 63;
-    green_inc = (float)(green_end - green_start) / (float)difference;
-
-    working_blue = blue_start;
-    if (working_blue < 0)
-      working_blue = 0;
-    else if (working_blue > 63)
-      working_blue = 63;
-    blue_inc = (float)(blue_end - blue_start) / (float)difference;
+    red_inc = (float)(red_end - working_red) / (float)difference;
+    green_inc = (float)(green_end - working_green) / (float)difference;
+    blue_inc = (float)(blue_end - working_blue) / (float)difference;
 
     for (int j = elem_start; j <= elem_end; j++) {
       s_pal_entry(static_cast<uint8_t>(j), static_cast<uint8_t>(working_red),
                   static_cast<uint8_t>(working_green),
                   static_cast<uint8_t>(working_blue));
 
-      working_red += red_inc;
-      if (working_red < 0)
-        working_red = 0;
-      else if (working_red > 63)
-        working_red = 63;
-
-      working_green += green_inc;
-      if (working_green < 0)
-        working_green = 0;
-      else if (working_green > 63)
-        working_green = 63;
-
-      working_blue += blue_inc;
-      if (working_blue < 0)
-        working_blue = 0;
-      else if (working_blue > 63)
-        working_blue = 63;
+      working_red = clamp_color(working_red + red_inc);
+      working_green = clamp_color(working_green + green_inc);
+      working_blue = clamp_color(working_blue + blue_inc);
     }
   }
 
@@ -667,13 +648,7 @@ void blur(void) {
 
       new_color = colors[new_color];
       if (is_noisy)
-        new_color += get_rnd() % 2 - 1;
-      if (new_color > MAX_COLOR) {
-        new_color = MAX_COLOR;
-      }
-      if (new_color < 0) {
-        new_color = 0;
-      }
+        new_color = clamp(new_color + get_rnd() % 2 - 1, 0, MAX_COLOR);
       set_pixel(d_buffer, x, y, static_cast<uint8_t>(new_color));
     }
   }
