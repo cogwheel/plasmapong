@@ -1,3 +1,4 @@
+#include <algorithm>
 #include <cassert>
 #include <cmath>
 #include <cstdint>
@@ -316,7 +317,7 @@ PaletteDef pal_table[] = {
 #define NUM_PALETTES (sizeof(pal_table) / sizeof(PaletteDef))
 
 uint8_t *vga = (uint8_t *)0xA0000000L; // location of video memory
-uint8_t *d_buffer, *x_buffer;
+uint8_t *front_buffer, *back_buffer;
 
 void set_pixel(uint8_t *buffer, int x, int y, uint8_t color);
 void show_buffer(uint8_t *buffer);
@@ -348,7 +349,7 @@ inline void show_buffer(uint8_t *buffer) {
   while (!(inp(INPUT_STATUS) & VRETRACE))
     ;
 
-  std::memcpy(x_buffer, buffer, SCREEN_SIZE);
+  std::swap(front_buffer, back_buffer);
   std::memcpy(vga, buffer, SCREEN_SIZE);
 }
 
@@ -430,6 +431,7 @@ void line(uint8_t *buffer, int x1, int y1, int x2, int y2, uint8_t color) {
 
 #define COUNTDOWN_X 150
 #define COUNTDOWN_Y 91
+#define COUNTDOWN_FRAMES 2
 
 #define START_SPEED 2.3
 
@@ -495,12 +497,11 @@ int main() {
         // TODO: Use a state machine or something so that input is still
         // processed while score is counting
         for (; score > 0; score--) {
-          draw_score(x_buffer, COUNTDOWN_X, COUNTDOWN_Y);
-          blur();
-          show_buffer(d_buffer);
-          draw_score(x_buffer, COUNTDOWN_X, COUNTDOWN_Y);
-          blur();
-          show_buffer(d_buffer);
+          for (int frame = 0; frame < COUNTDOWN_FRAMES; ++frame) {
+            blur();
+            draw_score(front_buffer, COUNTDOWN_X, COUNTDOWN_Y);
+            show_buffer(front_buffer);
+          }
         }
         init_game();
       }
@@ -548,27 +549,27 @@ int main() {
 
     blur();
 
-    draw_score(d_buffer, SCORE_X, SCORE_Y);
+    draw_score(front_buffer, SCORE_X, SCORE_Y);
 
     // draw paddles
 
     // TOP
-    line(d_buffer, MAX_X - (mouse_x - HALF_PADDLE), PADDLE_MARGIN,
+    line(front_buffer, MAX_X - (mouse_x - HALF_PADDLE), PADDLE_MARGIN,
          MAX_X - (mouse_x + HALF_PADDLE), PADDLE_MARGIN, MAX_COLOR);
     // BOTTOM
-    line(d_buffer, mouse_x - HALF_PADDLE, SCREEN_HEIGHT - PADDLE_MARGIN,
+    line(front_buffer, mouse_x - HALF_PADDLE, SCREEN_HEIGHT - PADDLE_MARGIN,
          mouse_x + HALF_PADDLE, SCREEN_HEIGHT - PADDLE_MARGIN, MAX_COLOR);
     // LEFT
-    line(d_buffer, PADDLE_MARGIN, mouse_y - HALF_PADDLE, PADDLE_MARGIN,
+    line(front_buffer, PADDLE_MARGIN, mouse_y - HALF_PADDLE, PADDLE_MARGIN,
          mouse_y + HALF_PADDLE, MAX_COLOR);
     // RIGHT
-    line(d_buffer, SCREEN_WIDTH - PADDLE_MARGIN,
+    line(front_buffer, SCREEN_WIDTH - PADDLE_MARGIN,
          MAX_Y - (mouse_y - HALF_PADDLE), SCREEN_WIDTH - PADDLE_MARGIN,
          MAX_Y - (mouse_y + HALF_PADDLE), MAX_COLOR);
 
     // Draw "nucleus" (i think?)
     for (int i = 0; i < 5; i++) {
-      line(d_buffer, (int)ball_x + get_rnd() % 6 - 3,
+      line(front_buffer, (int)ball_x + get_rnd() % 6 - 3,
            (int)ball_y + get_rnd() % 6 - 3, (int)ball_x + get_rnd() % 6 - 3,
            (int)ball_y + get_rnd() % 6 - 3, 230);
     }
@@ -581,10 +582,10 @@ int main() {
       neb_x[i] = neb_x[i] * cosTable[neb_a[i]] - neb_y[i] * sinTable[neb_a[i]];
       neb_y[i] = neb_y[i] * cosTable[neb_a[i]] + tempX * sinTable[neb_a[i]];
 
-      set_pixel(d_buffer, neb_x[i] + ball_x, neb_y[i] + ball_y, MAX_COLOR);
+      set_pixel(front_buffer, neb_x[i] + ball_x, neb_y[i] + ball_y, MAX_COLOR);
     }
 
-    show_buffer(d_buffer);
+    show_buffer(front_buffer);
   }
 
   set_mode(old_mode);
@@ -651,37 +652,37 @@ void blur() {
       const int index = target_y[y] + target_x[x];
 
       // Center pixel gets 8x weight
-      weighted_sum += (x_buffer[index]) << 3;
+      weighted_sum += (back_buffer[index]) << 3;
 
       // Top, bottom, left, right get 1x weight
-      weighted_sum += x_buffer[index + 1];
-      weighted_sum += x_buffer[index + SCREEN_WIDTH];
+      weighted_sum += back_buffer[index + 1];
+      weighted_sum += back_buffer[index + SCREEN_WIDTH];
 
-      weighted_sum += x_buffer[index - 1];
-      weighted_sum += x_buffer[index - SCREEN_WIDTH];
+      weighted_sum += back_buffer[index - 1];
+      weighted_sum += back_buffer[index - SCREEN_WIDTH];
 
       int target_color = weighted_averages[weighted_sum];
       if (is_noisy)
         target_color = clamp(target_color + get_rnd() % 2 - 1, 0, MAX_COLOR);
-      set_pixel(d_buffer, x, y, static_cast<uint8_t>(target_color));
+      set_pixel(front_buffer, x, y, static_cast<uint8_t>(target_color));
     }
   }
 }
 
 void init() {
-  // allocate mem for the d_buffer
-  if ((d_buffer = new uint8_t[SCREEN_SIZE]) == NULL) {
+  // allocate mem for the front_buffer
+  if ((front_buffer = new uint8_t[SCREEN_SIZE]) == NULL) {
     std::cout << "Not enough memory for front buffer.\n";
     std::exit(1);
   }
 
-  if ((x_buffer = new uint8_t[SCREEN_SIZE]) == NULL) {
+  if ((back_buffer = new uint8_t[SCREEN_SIZE]) == NULL) {
     std::cout << "Not enough memory for back buffer.\n";
     std::exit(1);
   }
 
-  std::memset(d_buffer, 0, SCREEN_SIZE);
-  std::memset(x_buffer, 0, SCREEN_SIZE);
+  std::memset(front_buffer, 0, SCREEN_SIZE);
+  std::memset(back_buffer, 0, SCREEN_SIZE);
 
   set_mode(VGA_256_COLOR_MODE);
 
@@ -753,24 +754,23 @@ inline void waves() {
     vertices[i] = get_rnd() % 60 + 60;
   }
   for (int i = 0; i < 10; i++) {
-    line(x_buffer, i * 32, vertices[i], i * 32 + 32, vertices[i + 1], 128);
+    line(back_buffer, i * 32, vertices[i], i * 32 + 32, vertices[i + 1], 128);
   }
 }
 
 inline void dots() {
   for (int i = 0; i < 8; i++) {
     int drop_x = get_rnd() % SCREEN_WIDTH, drop_y = get_rnd() % SCREEN_HEIGHT;
-    set_pixel(x_buffer, drop_x, drop_y, MAX_COLOR);
-    set_pixel(x_buffer, drop_x + 1, drop_y, MAX_COLOR);
-    set_pixel(x_buffer, drop_x - 1, drop_y, MAX_COLOR);
-    set_pixel(x_buffer, drop_x, drop_y + 1, MAX_COLOR);
-    set_pixel(x_buffer, drop_x, drop_y - 1, MAX_COLOR);
+    set_pixel(back_buffer, drop_x, drop_y, MAX_COLOR);
+    set_pixel(back_buffer, drop_x + 1, drop_y, MAX_COLOR);
+    set_pixel(back_buffer, drop_x - 1, drop_y, MAX_COLOR);
+    set_pixel(back_buffer, drop_x, drop_y + 1, MAX_COLOR);
+    set_pixel(back_buffer, drop_x, drop_y - 1, MAX_COLOR);
   }
 }
 
 inline void lines() {
-
-  line(x_buffer, get_rnd() % SCREEN_WIDTH, get_rnd() % SCREEN_HEIGHT,
+  line(back_buffer, get_rnd() % SCREEN_WIDTH, get_rnd() % SCREEN_HEIGHT,
        get_rnd() % SCREEN_WIDTH, get_rnd() % SCREEN_HEIGHT,
        static_cast<uint8_t>(get_rnd() % NUM_COLORS));
 }
