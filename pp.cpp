@@ -1,18 +1,16 @@
-//// TODO: fix indentation (tab stop is 3!!)
-
 #include <cassert>
+#include <cmath>
 #include <cstdint>
-#include <math.h>
-#include <mem.h>
-#include <stdio.h>
-#include <stdlib.h>
+#include <cstdlib>
+#include <iostream>
+#include <memory>
 
 #include <conio.h>
 #include <dos.h>
 
 using std::uint8_t;
 
-//// TODO: Rearrange so we don't need prototypes?
+// TODO: Rearrange so we don't need prototypes?
 
 // prototypes:
 void init(void);
@@ -148,7 +146,7 @@ inline int get_rnd(void) {
 void init_rnd(void) {
   next_rnd_index = 0;
   for (int i = 0; i < MAX_RAND_NUMS; i++) {
-    rnd_tbl[i] = rand();
+    rnd_tbl[i] = std::rand();
   }
 }
 
@@ -347,8 +345,8 @@ inline void show_buffer(uint8_t *buffer) {
   while (!(inp(INPUT_STATUS) & VRETRACE))
     ;
 
-  memcpy(x_buffer, buffer, SCREEN_SIZE);
-  memcpy(vga, buffer, SCREEN_SIZE);
+  std::memcpy(x_buffer, buffer, SCREEN_SIZE);
+  std::memcpy(vga, buffer, SCREEN_SIZE);
 }
 
 inline void s_pal_entry(uint8_t index, uint8_t red, uint8_t green,
@@ -438,8 +436,8 @@ int main(void) {
   init();
 
   if (get_mode() != VGA_256_COLOR_MODE) {
-    fprintf(stderr, "Unable to set 320x200x256 color mode\n");
-    exit(1);
+    std::cerr << "Unable to set 320x200x256 color mode\n";
+    std::exit(1);
   }
 
   union REGS r;
@@ -609,7 +607,7 @@ void make_palette(PaletteDef const &pal_data) {
     PaletteRange const &range = pal_data.ranges[i];
     elem_start = range.first_index;
     elem_end = range.last_index;
-    difference = abs(elem_end - elem_start);
+    difference = std::abs(elem_end - elem_start);
 
     working_red = assert_color(range.first_color.r);
     working_green = assert_color(range.first_color.g);
@@ -663,22 +661,22 @@ void blur(void) {
 
 void init(void) {
   score = 0;
-  srand(15);
+  std::srand(15);
   init_rnd();
 
   // allocate mem for the d_buffer
-  if ((d_buffer = (uint8_t *)malloc(SCREEN_SIZE)) == NULL) {
-    fprintf(stderr, "Not enough memory for double buffer.\n");
-    exit(1);
+  if ((d_buffer = new uint8_t[SCREEN_SIZE]) == NULL) {
+    std::cout << "Not enough memory for front buffer.\n";
+    std::exit(1);
   }
 
-  if ((x_buffer = (uint8_t *)malloc(SCREEN_SIZE)) == NULL) {
-    fprintf(stderr, "Not enough memory for double buffer.\n");
-    exit(1);
+  if ((x_buffer = new uint8_t[SCREEN_SIZE]) == NULL) {
+    std::cout << "Not enough memory for back buffer.\n";
+    std::exit(1);
   }
 
-  memset(d_buffer, 0, SCREEN_SIZE);
-  memset(x_buffer, 0, SCREEN_SIZE);
+  std::memset(d_buffer, 0, SCREEN_SIZE);
+  std::memset(x_buffer, 0, SCREEN_SIZE);
 
   set_mode(VGA_256_COLOR_MODE);
   make_palette(pal_table[get_rnd() % NUM_PALETTES]);
@@ -707,12 +705,13 @@ void init(void) {
   for (int i = 0; i < NEBULA_PARTICLES; i++) {
     neb_x[i] = get_rnd() % 3 - 5;
     neb_y[i] = get_rnd() % 3 - 5;
+    // Take advantage of uint underflow to create complementary angles
     neb_a[i] = static_cast<uint8_t>(get_rnd() % 30 - 15);
   }
 
   for (int i = 0; i != 255; i++) {
-    cosTable[i] = cos(((2 * 3.1415) / 256) * i);
-    sinTable[i] = sin(((2 * 3.1415) / 256) * i);
+    cosTable[i] = std::cos(((2 * 3.1415) / 256) * i);
+    sinTable[i] = std::sin(((2 * 3.1415) / 256) * i);
   }
   curr_effect = 0;
 }
