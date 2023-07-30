@@ -38,7 +38,7 @@ int score;
 #define DIGIT_SPACING 7
 
 // clang-format off
-unsigned char digit_sprites[][DIGIT_HEIGHT][DIGIT_WIDTH] = {
+uint8_t digit_sprites[][DIGIT_HEIGHT][DIGIT_WIDTH] = {
   { 0, 255, 255, 255, 0,
     255, 0, 0, 0, 255,
     255, 0, 0, 0, 255,
@@ -132,7 +132,7 @@ bool is_noisy;
 
 #define NEBULA_PARTICLES 25
 float neb_x[NEBULA_PARTICLES], neb_y[NEBULA_PARTICLES];
-unsigned char neb_a[NEBULA_PARTICLES];
+uint8_t neb_a[NEBULA_PARTICLES];
 
 double cosTable[255], sinTable[255];
 
@@ -178,10 +178,8 @@ float ball_x, ball_y, ball_x_delta, ball_y_delta, x_temp, y_temp;
 #define PALETTE_REGISTER_WRITE 0x03c8
 #define PALETTE_DATA 0x03c9
 
-typedef unsigned char byte;
-typedef unsigned short word;
 
-void draw_score(byte *buffer, int x, int y);
+void draw_score(uint8_t *buffer, int x, int y);
 
 #define MAX_PALETTE_RANGES 8
 
@@ -303,23 +301,22 @@ PaletteDef pal_table[] = {
 
 #define NUM_PALETTES (sizeof(pal_table) / sizeof(PaletteDef))
 
-byte *vga = (byte *)0xA0000000L; // location of video memory
-byte *d_buffer, *x_buffer;
+uint8_t *vga = (uint8_t *)0xA0000000L; // location of video memory
+uint8_t *d_buffer, *x_buffer;
 
-void set_pixel(byte *buffer, int x, int y, byte color);
-void show_buffer(byte *buffer);
-void s_pal_entry(unsigned char index, unsigned char red, unsigned char green,
-                 unsigned char blue);
-void line(byte *buffer, int x1, int y1, int x2, int y2, unsigned char color);
+void set_pixel(uint8_t *buffer, int x, int y, uint8_t color);
+void show_buffer(uint8_t *buffer);
+void s_pal_entry(uint8_t index, uint8_t red, uint8_t green, uint8_t blue);
+void line(uint8_t *buffer, int x1, int y1, int x2, int y2, uint8_t color);
 
-byte get_mode() {
+uint8_t get_mode() {
   REGS regs;
   regs.h.ah = GET_MODE;
   int86(VIDEO_INT, &regs, &regs);
   return regs.h.al;
 }
 
-void set_mode(byte mode) {
+void set_mode(uint8_t mode) {
   union REGS regs;
 
   regs.h.ah = SET_MODE;
@@ -327,11 +324,11 @@ void set_mode(byte mode) {
   int86(VIDEO_INT, &regs, &regs);
 }
 
-inline void set_pixel(byte *buffer, int x, int y, byte color) {
+inline void set_pixel(uint8_t *buffer, int x, int y, uint8_t color) {
   buffer[y * SCREEN_WIDTH + x] = color;
 }
 
-inline void show_buffer(byte *buffer) {
+inline void show_buffer(uint8_t *buffer) {
   while ((inp(INPUT_STATUS) & VRETRACE))
     ;
   while (!(inp(INPUT_STATUS) & VRETRACE))
@@ -341,8 +338,8 @@ inline void show_buffer(byte *buffer) {
   memcpy(vga, buffer, SCREEN_SIZE);
 }
 
-inline void s_pal_entry(unsigned char index, unsigned char red,
-                        unsigned char green, unsigned char blue) {
+inline void s_pal_entry(uint8_t index, uint8_t red, uint8_t green,
+                        uint8_t blue) {
   outp(PALETTE_MASK, 0xff);
   outp(PALETTE_REGISTER_WRITE, index); // tell it what index to use (0-255)
   outp(PALETTE_DATA, red);             // enter the red
@@ -350,7 +347,7 @@ inline void s_pal_entry(unsigned char index, unsigned char red,
   outp(PALETTE_DATA, blue);            // blue
 }
 
-void line(byte *buffer, int x1, int y1, int x2, int y2, unsigned char color) {
+void line(uint8_t *buffer, int x1, int y1, int x2, int y2, uint8_t color) {
   int dx, dy, xinc, yinc, two_dx, two_dy, x = x1, y = y1, i, error;
 
   if (x1 == x2 && y1 == y2) {
@@ -403,7 +400,7 @@ void line(byte *buffer, int x1, int y1, int x2, int y2, unsigned char color) {
 ///--------------main stuff
 
 int main(void) {
-  byte old_mode = get_mode();
+  uint8_t old_mode = get_mode();
 
   init();
 
@@ -529,7 +526,7 @@ int main(void) {
 }
 
 void make_palette(PaletteDef const &pal_data) {
-  char elem_start, elem_end, red_start, red_end, green_start, green_end,
+  uint8_t elem_start, elem_end, red_start, red_end, green_start, green_end,
       blue_start, blue_end;
 
   // TODO: interpolate instead of integrate
@@ -571,9 +568,9 @@ void make_palette(PaletteDef const &pal_data) {
     blue_inc = (float)(blue_end - blue_start) / (float)difference;
 
     for (int j = elem_start; j <= elem_end; j++) {
-      s_pal_entry(static_cast<byte>(j), static_cast<byte>(working_red),
-                  static_cast<byte>(working_green),
-                  static_cast<byte>(working_blue));
+      s_pal_entry(static_cast<uint8_t>(j), static_cast<uint8_t>(working_red),
+                  static_cast<uint8_t>(working_green),
+                  static_cast<uint8_t>(working_blue));
 
       working_red += red_inc;
       if (working_red < 0)
@@ -624,7 +621,7 @@ void blur(void) {
       if (new_color < 0) {
         new_color = 0;
       }
-      set_pixel(d_buffer, x, y, static_cast<byte>(new_color));
+      set_pixel(d_buffer, x, y, static_cast<uint8_t>(new_color));
     }
   }
 }
@@ -635,12 +632,12 @@ void init(void) {
   init_rnd();
 
   // allocate mem for the d_buffer
-  if ((d_buffer = (byte *)malloc(SCREEN_SIZE)) == NULL) {
+  if ((d_buffer = (uint8_t *)malloc(SCREEN_SIZE)) == NULL) {
     fprintf(stderr, "Not enough memory for double buffer.\n");
     exit(1);
   }
 
-  if ((x_buffer = (byte *)malloc(SCREEN_SIZE)) == NULL) {
+  if ((x_buffer = (uint8_t *)malloc(SCREEN_SIZE)) == NULL) {
     fprintf(stderr, "Not enough memory for double buffer.\n");
     exit(1);
   }
@@ -675,7 +672,7 @@ void init(void) {
   for (int i = 0; i < NEBULA_PARTICLES; i++) {
     neb_x[i] = get_rnd() % 3 - 5;
     neb_y[i] = get_rnd() % 3 - 5;
-    neb_a[i] = static_cast<byte>(get_rnd() % 30 - 15);
+    neb_a[i] = static_cast<uint8_t>(get_rnd() % 30 - 15);
   }
 
   for (int i = 0; i != 255; i++) {
@@ -701,7 +698,7 @@ inline void waves(void) {
   set_pixel(x_buffer, drop_x, drop_y - 1, 255);
 }
 
-inline void draw_digit(byte *buffer, int x, int y, int digit) {
+inline void draw_digit(uint8_t *buffer, int x, int y, int digit) {
   for (int y_loop = 0; y_loop < DIGIT_HEIGHT; y_loop++) {
     for (int x_loop = 0; x_loop < DIGIT_WIDTH; x_loop++) {
       set_pixel(buffer, x_loop + x, y_loop + y,
@@ -710,7 +707,7 @@ inline void draw_digit(byte *buffer, int x, int y, int digit) {
   }
 }
 
-void draw_score(byte *buffer, int x, int y) {
+void draw_score(uint8_t *buffer, int x, int y) {
   if (score == 0) {
     draw_digit(buffer, x, y, 0);
     return;
@@ -745,5 +742,5 @@ inline void dots(void) {
 inline void lines(void) {
 
   line(x_buffer, get_rnd() % 319, get_rnd() % 199, get_rnd() % 319,
-       get_rnd() % 199, static_cast<byte>(get_rnd() % 255));
+       get_rnd() % 199, static_cast<uint8_t>(get_rnd() % 255));
 }
