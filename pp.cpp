@@ -134,6 +134,7 @@ bool is_noisy;
 float neb_x[NEBULA_PARTICLES], neb_y[NEBULA_PARTICLES];
 uint8_t neb_a[NEBULA_PARTICLES];
 
+// TODO: these should be 256 not 255
 double cosTable[255], sinTable[255];
 
 inline int get_rnd(void) {
@@ -150,13 +151,6 @@ void init_rnd(void) {
   }
 }
 
-int mouse_x, mouse_y;
-unsigned short target_x[320];
-unsigned short target_y[200];
-short colors[12 * 255];
-
-float ball_x, ball_y, ball_x_delta, ball_y_delta, x_temp, y_temp;
-
 #define VIDEO_INT 0x10          // the BIOS video interrupt.
 #define WRITE_DOT 0x0C          // BIOS func to plot a pixel.
 #define SET_MODE 0x00           // BIOS func to set the video mode.
@@ -164,10 +158,18 @@ float ball_x, ball_y, ball_x_delta, ball_y_delta, x_temp, y_temp;
 #define VGA_256_COLOR_MODE 0x13 // use to set 256-color mode.
 #define TEXT_MODE 0x03          // use to set 80x25 text mode.
 
-#define SCREEN_WIDTH 320  // width in pixels of mode 0x13
+#define SCREEN_WIDTH 320 // width in pixels of mode 0x13
+#define MAX_X (SCREEN_WIDTH - 1)
+#define MID_X (SCREEN_WIDTH >> 1)
+
 #define SCREEN_HEIGHT 200 // height in pixels of mode 0x13
-#define SCREEN_SIZE (word)(SCREEN_WIDTH * SCREEN_HEIGHT)
+#define MAX_Y (SCREEN_HEIGHT - 1)
+#define MID_Y (SCREEN_HEIGHT >> 1)
+
+#define SCREEN_SIZE (SCREEN_WIDTH * SCREEN_HEIGHT)
+
 #define NUM_COLORS 256 // number of colors in mode 0x13
+#define MAX_COLOR (NUM_COLORS - 1)
 
 #define DISPLAY_ENABLE 0x01 // VGA input status bits
 #define INPUT_STATUS 0x03da
@@ -178,6 +180,15 @@ float ball_x, ball_y, ball_x_delta, ball_y_delta, x_temp, y_temp;
 #define PALETTE_REGISTER_WRITE 0x03c8
 #define PALETTE_DATA 0x03c9
 
+int mouse_x, mouse_y;
+unsigned short target_x[SCREEN_WIDTH];
+unsigned short target_y[SCREEN_HEIGHT];
+
+// TODO: this should have a better name like `color_normalization`. It is a
+// lookup table for taking the weighted sum around a target pixel
+short colors[12 * MAX_COLOR];
+
+float ball_x, ball_y, ball_x_delta, ball_y_delta, x_temp, y_temp;
 
 void draw_score(uint8_t *buffer, int x, int y);
 
@@ -432,9 +443,10 @@ int main(void) {
     ball_y += ball_y_delta;
 
     if (ball_x > 305 || ball_x < 15 || ball_y > 185 || ball_y < 15) {
-      if (ball_x > 319 || ball_x < 0 || ball_y > 199 || ball_y < 0) {
-        ball_x = 160;
-        ball_y = 100;
+      if (ball_x >= SCREEN_WIDTH || ball_x < 0 || ball_y >= SCREEN_HEIGHT ||
+          ball_y < 0) {
+        ball_x = MID_X;
+        ball_y = MID_Y;
         ball_x_delta = (get_rnd() % 2) ? 2.3 : -2.3;
         ball_y_delta = (get_rnd() % 2) ? 2.3 : -2.3;
         speed = 2.3;
@@ -459,21 +471,21 @@ int main(void) {
         make_palette(pal_table[get_rnd() % NUM_PALETTES]);
         curr_effect = get_rnd() % NUM_EFFECTS;
         score++;
-      } else if (ball_y < (199 - (mouse_y - 18)) &&
-                 ball_y > (199 - (mouse_y + 18)) && ball_x > 307) {
+      } else if (ball_y < (MAX_Y - (mouse_y - 18)) &&
+                 ball_y > (MAX_Y - (mouse_y + 18)) && ball_x > 307) {
         speed += .05;
         ball_x_delta = -1 * speed;
         ball_x = x_temp;
-        ball_y_delta = (ball_y - (199 - mouse_y)) / 4;
+        ball_y_delta = (ball_y - (MAX_Y - mouse_y)) / 4;
         make_palette(pal_table[get_rnd() % NUM_PALETTES]);
         curr_effect = get_rnd() % NUM_EFFECTS;
         score++;
-      } else if (ball_x < (319 - (mouse_x - 18)) &&
-                 ball_x > (319 - (mouse_x + 18)) && ball_y < 13) {
+      } else if (ball_x < (MAX_X - (mouse_x - 18)) &&
+                 ball_x > (MAX_X - (mouse_x + 18)) && ball_y < 13) {
         speed += .05;
         ball_y_delta = speed;
         ball_y = y_temp;
-        ball_x_delta = (ball_x - (319 - mouse_x)) / 4;
+        ball_x_delta = (ball_x - (MAX_X - mouse_x)) / 4;
         make_palette(pal_table[get_rnd() % NUM_PALETTES]);
         score++;
         curr_effect = get_rnd() % NUM_EFFECTS;
@@ -489,16 +501,22 @@ int main(void) {
       }
     }
 
-    // draw paddles
-
     blur();
 
     draw_score(d_buffer, 10, 10);
 
-    line(d_buffer, 319 - (mouse_x - 16), 10, 319 - (mouse_x + 16), 10, 255);
-    line(d_buffer, mouse_x - 16, 190, mouse_x + 16, 190, 255);
-    line(d_buffer, 10, mouse_y - 16, 10, mouse_y + 16, 255);
-    line(d_buffer, 310, 199 - (mouse_y - 16), 310, 199 - (mouse_y + 16), 255);
+    // draw paddles
+
+    // TOP
+    line(d_buffer, MAX_X - (mouse_x - 16), 10, MAX_X - (mouse_x + 16), 10,
+         MAX_COLOR);
+    // BOTTOM
+    line(d_buffer, mouse_x - 16, 190, mouse_x + 16, 190, MAX_COLOR);
+    // LEFT
+    line(d_buffer, 10, mouse_y - 16, 10, mouse_y + 16, MAX_COLOR);
+    // RIGHT
+    line(d_buffer, 310, MAX_Y - (mouse_y - 16), 310, MAX_Y - (mouse_y + 16),
+         MAX_COLOR);
 
     for (int i = 0; i < 5; i++) {
       line(d_buffer, (int)ball_x + get_rnd() % 6 - 3,
@@ -514,7 +532,7 @@ int main(void) {
       neb_x[i] = neb_x[i] * cosTable[neb_a[i]] - neb_y[i] * sinTable[neb_a[i]];
       neb_y[i] = neb_y[i] * cosTable[neb_a[i]] + tempX * sinTable[neb_a[i]];
 
-      set_pixel(d_buffer, neb_x[i] + ball_x, neb_y[i] + ball_y, 255);
+      set_pixel(d_buffer, neb_x[i] + ball_x, neb_y[i] + ball_y, MAX_COLOR);
     }
 
     show_buffer(d_buffer);
@@ -598,8 +616,8 @@ void make_palette(PaletteDef const &pal_data) {
 void blur(void) {
   /*   int rand_x=0, rand_y=0;
   rand_x=rand()%4-2; rand_y=rand()%4-2; */
-  for (int y = 0; y < 200; y++) {
-    for (int x = 0; x < 320; x++) {
+  for (int y = 0; y < SCREEN_HEIGHT; y++) {
+    for (int x = 0; x < SCREEN_WIDTH; x++) {
 
       int new_color = 0;
       int index = target_y[y] + target_x[x];
@@ -615,8 +633,8 @@ void blur(void) {
       new_color = colors[new_color];
       if (is_noisy)
         new_color += get_rnd() % 2 - 1;
-      if (new_color > 255) {
-        new_color = 255;
+      if (new_color > MAX_COLOR) {
+        new_color = MAX_COLOR;
       }
       if (new_color < 0) {
         new_color = 0;
@@ -649,22 +667,22 @@ void init(void) {
   make_palette(pal_table[get_rnd() % NUM_PALETTES]);
   curr_effect = get_rnd() % NUM_EFFECTS + 1;
 
-  for (int i = 0; i < 320; i++) {
-    short target = ((i - 160) / 1.03) + 160;
+  for (int i = 0; i < SCREEN_WIDTH; i++) {
+    short target = ((i - MID_X) / 1.03) + MID_X;
     target_x[i] = clamp<short>(target, 0, SCREEN_WIDTH);
   }
 
-  for (int i = 0; i < 200; i++) {
-    short target = (((i - 100) / 1.03) + 100);
+  for (int i = 0; i < SCREEN_HEIGHT; i++) {
+    short target = (((i - MID_Y) / 1.03) + MID_Y);
     target_y[i] = SCREEN_WIDTH * clamp<short>(target, 0, SCREEN_HEIGHT);
   }
 
-  for (int i = 0; i < (12 * 255); i++) {
+  for (int i = 0; i < (12 * MAX_COLOR); i++) {
     colors[i] = i / 12.1;
   }
 
-  ball_x = 160;
-  ball_y = 100;
+  ball_x = MID_X;
+  ball_y = MID_Y;
   speed = 2.3;
   ball_x_delta = (get_rnd() % 2) ? 2.3 : -2.3;
   ball_y_delta = (get_rnd() % 2) ? 2.3 : -2.3;
@@ -690,12 +708,12 @@ inline void waves(void) {
   for (int i = 0; i < 10; i++) {
     line(x_buffer, i * 32, vertices[i], i * 32 + 32, vertices[i + 1], 128);
   }
-  int drop_x = get_rnd() % 319, drop_y = get_rnd() % 119;
-  set_pixel(x_buffer, drop_x, drop_y, 255);
-  set_pixel(x_buffer, drop_x + 1, drop_y, 255);
-  set_pixel(x_buffer, drop_x - 1, drop_y, 255);
-  set_pixel(x_buffer, drop_x, drop_y + 1, 255);
-  set_pixel(x_buffer, drop_x, drop_y - 1, 255);
+  int drop_x = get_rnd() % MAX_X, drop_y = get_rnd() % 119;
+  set_pixel(x_buffer, drop_x, drop_y, MAX_COLOR);
+  set_pixel(x_buffer, drop_x + 1, drop_y, MAX_COLOR);
+  set_pixel(x_buffer, drop_x - 1, drop_y, MAX_COLOR);
+  set_pixel(x_buffer, drop_x, drop_y + 1, MAX_COLOR);
+  set_pixel(x_buffer, drop_x, drop_y - 1, MAX_COLOR);
 }
 
 inline void draw_digit(uint8_t *buffer, int x, int y, int digit) {
@@ -730,17 +748,18 @@ void draw_score(uint8_t *buffer, int x, int y) {
 
 inline void dots(void) {
   for (int i = 0; i < 8; i++) {
-    int drop_x = get_rnd() % 319, drop_y = get_rnd() % 199;
-    set_pixel(x_buffer, drop_x, drop_y, 255);
-    set_pixel(x_buffer, drop_x + 1, drop_y, 255);
-    set_pixel(x_buffer, drop_x - 1, drop_y, 255);
-    set_pixel(x_buffer, drop_x, drop_y + 1, 255);
-    set_pixel(x_buffer, drop_x, drop_y - 1, 255);
+    int drop_x = get_rnd() % SCREEN_WIDTH, drop_y = get_rnd() % SCREEN_HEIGHT;
+    set_pixel(x_buffer, drop_x, drop_y, MAX_COLOR);
+    set_pixel(x_buffer, drop_x + 1, drop_y, MAX_COLOR);
+    set_pixel(x_buffer, drop_x - 1, drop_y, MAX_COLOR);
+    set_pixel(x_buffer, drop_x, drop_y + 1, MAX_COLOR);
+    set_pixel(x_buffer, drop_x, drop_y - 1, MAX_COLOR);
   }
 }
 
 inline void lines(void) {
 
-  line(x_buffer, get_rnd() % 319, get_rnd() % 199, get_rnd() % 319,
-       get_rnd() % 199, static_cast<uint8_t>(get_rnd() % 255));
+  line(x_buffer, get_rnd() % SCREEN_WIDTH, get_rnd() % SCREEN_HEIGHT,
+       get_rnd() % SCREEN_WIDTH, get_rnd() % SCREEN_HEIGHT,
+       static_cast<uint8_t>(get_rnd() % NUM_COLORS));
 }
