@@ -7,7 +7,7 @@ My attempt to clean up an ancient DOS game a friend and I made in high school.
 - Rename, rearrange, reformat, and refactor things to be more sane, but still one file
 - [X] Get it running under FreeDOS with OpenWatcom compiler
 - Fix game-breaking problems
-    - [ ] Score display
+    - [X] Score display
     - [X] Address compiler warnings
     - [X] Crash in non-huge memory model
 - Fix QoL problems

@@ -439,10 +439,10 @@ int main(void) {
         ball_y_delta = (get_rnd() % 2) ? 2.3 : -2.3;
         speed = 2.3;
         for (; score > 0; score--) {
-          //                draw_text(x_buffer,150,91);
+          draw_text(x_buffer, 150, 91);
           blur();
           show_buffer(d_buffer);
-          //                draw_text(x_buffer,150,91);
+          draw_text(x_buffer, 150, 91);
           blur();
           show_buffer(d_buffer);
         }
@@ -493,7 +493,7 @@ int main(void) {
 
     blur();
 
-    //      draw_text(d_buffer,10,10);
+    draw_text(d_buffer, 10, 10);
 
     line(d_buffer, 319 - (mouse_x - 16), 10, 319 - (mouse_x + 16), 10, 255);
     line(d_buffer, mouse_x - 16, 190, mouse_x + 16, 190, 255);
