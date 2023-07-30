@@ -26,9 +26,15 @@ template <typename T> inline T clamp(T val, T min, T max) {
   return val < min ? min : val > max ? max : val;
 }
 
-#define NUM_EFFECTS 3
+enum Effect {
+  kNone,
+  kDots,
+  kLines,
+  kWaves,
+  kNumEffects,
+};
 
-int curr_effect;
+Effect curr_effect;
 
 int score;
 
@@ -435,6 +441,10 @@ void line(uint8_t *buffer, int x1, int y1, int x2, int y2, uint8_t color) {
 
 #define START_SPEED 2.3
 
+inline Effect choose_effect() {
+  return static_cast<Effect>(get_rnd() % kNumEffects);
+}
+
 void init_game() {
   init_rnd();
   ball_x = MID_X;
@@ -443,7 +453,7 @@ void init_game() {
   ball_y_delta = (get_rnd() % 2) ? START_SPEED : -START_SPEED;
   speed = START_SPEED;
   make_palette(pal_table[get_rnd() % NUM_PALETTES]);
-  curr_effect = get_rnd() % NUM_EFFECTS;
+  curr_effect = choose_effect();
   score = 0;
 }
 
@@ -469,15 +479,21 @@ int main() {
     mouse_y = r.x.dx * 0.74 + 26;
 
     switch (curr_effect) {
-    case 0:
-      waves();
+    case kNone:
+      // Nothing is an effect
       break;
-    case 1:
+    case kDots:
       dots();
       break;
-    case 2:
+    case kLines:
       lines();
       break;
+    case kWaves:
+      waves();
+      break;
+    default:
+      std::cerr << "Invalid Effect value " << int(curr_effect) << "\n";
+      std::exit(1);
     }
 
     x_temp = ball_x;
@@ -512,7 +528,7 @@ int main() {
         ball_x = x_temp;
         ball_y_delta = (ball_y - mouse_y) / 4;
         make_palette(pal_table[get_rnd() % NUM_PALETTES]);
-        curr_effect = get_rnd() % NUM_EFFECTS;
+        curr_effect = choose_effect();
         score++;
       } else if (ball_y < (MAX_Y - (mouse_y - HALF_PADDLE_HIT)) &&
                  ball_y > (MAX_Y - (mouse_y + HALF_PADDLE_HIT)) &&
@@ -522,7 +538,7 @@ int main() {
         ball_x = x_temp;
         ball_y_delta = (ball_y - (MAX_Y - mouse_y)) / 4;
         make_palette(pal_table[get_rnd() % NUM_PALETTES]);
-        curr_effect = get_rnd() % NUM_EFFECTS;
+        curr_effect = choose_effect();
         score++;
       } else if (ball_x < (MAX_X - (mouse_x - HALF_PADDLE_HIT)) &&
                  ball_x > (MAX_X - (mouse_x + HALF_PADDLE_HIT)) &&
@@ -533,7 +549,7 @@ int main() {
         ball_x_delta = (ball_x - (MAX_X - mouse_x)) / 4;
         make_palette(pal_table[get_rnd() % NUM_PALETTES]);
         score++;
-        curr_effect = get_rnd() % NUM_EFFECTS;
+        curr_effect = choose_effect();
       } else if (ball_x > (mouse_x - HALF_PADDLE_HIT) &&
                  ball_x < (mouse_x + HALF_PADDLE_HIT) &&
                  ball_y >= (SCREEN_HEIGHT - PADDLE_MARGIN_HIT)) {
@@ -543,7 +559,7 @@ int main() {
         ball_x_delta = (ball_x - mouse_x) / 4;
         make_palette(pal_table[get_rnd() % NUM_PALETTES]);
         score++;
-        curr_effect = get_rnd() % NUM_EFFECTS;
+        curr_effect = choose_effect();
       }
     }
 
