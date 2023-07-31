@@ -494,9 +494,9 @@ void line(uint8_t *buffer, int x1, int y1, int x2, int y2, uint8_t color) {
 #define SCORE_X 10
 #define SCORE_Y 10
 
-#define COUNTDOWN_X 150
-#define COUNTDOWN_Y 91
-#define COUNTDOWN_FRAMES 2
+#define COUNTDOWN_X 154
+#define COUNTDOWN_Y 93
+#define COUNTDOWN_FRAMES 4
 
 #define START_SPEED 2.3
 

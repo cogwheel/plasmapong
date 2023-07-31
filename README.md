@@ -38,6 +38,5 @@ To exit, click both left and right mouse buttons simultaneously.
 
 ## Known issues
 
-* Blur effect isn't centered on the screen
 * Score is not very legible, especially during countdown
 * Ball speed calculation is wonky; there is both a `speed` and `ball_[xy]_delta`
