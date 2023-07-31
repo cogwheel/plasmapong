@@ -116,6 +116,13 @@ using std::uint8_t;
 #define PADDLE_MARGIN 10
 #define HALF_PADDLE 16
 
+#define MOUSE_MARGIN ((PADDLE_MARGIN) + (HALF_PADDLE))
+#define MOUSE_X_RANGE ((SCREEN_WIDTH)-2 * (MOUSE_MARGIN))
+#define MOUSE_Y_RANGE ((SCREEN_HEIGHT)-2 * (MOUSE_MARGIN))
+
+#define MOUSE_X_SCALE (float(MOUSE_X_RANGE) / (SCREEN_WIDTH))
+#define MOUSE_Y_SCALE (float(MOUSE_Y_RANGE) / (SCREEN_HEIGHT))
+
 template <typename T> inline T clamp(T val, T min, T max) {
   return val < min ? min : val > max ? max : val;
 }
@@ -378,10 +385,12 @@ void get_mouse_state(MouseState &mouse) {
   regs.x.ax = MOUSE_STATUS;
   int86(MOUSE_INT, &regs, &regs);
 
-  // I *think* this magic math normalizes the mouse coordinates to the range
-  // of the paddles
-  mouse.x = regs.x.cx * 0.420062695924 + 26;
-  mouse.y = regs.x.dx * 0.74 + 26;
+  // DOS doubles the X coord at 320 SCREEN_WIDTH
+  int const raw_x = regs.x.cx >> 1;
+  int const raw_y = regs.x.dx;
+
+  mouse.x = raw_x * MOUSE_X_SCALE + MOUSE_MARGIN;
+  mouse.y = raw_y * MOUSE_Y_SCALE + MOUSE_MARGIN;
 
   mouse.buttons = regs.x.bx;
 }
