@@ -666,7 +666,6 @@ uint8_t assert_color(uint8_t color) {
 void make_palette(PaletteDef const &pal_data) {
   uint8_t elem_start, elem_end, red_end, green_end, blue_end;
 
-  // TODO: interpolate instead of integrate
   float red_inc, green_inc, blue_inc, difference, working_red, working_green,
       working_blue;
 
@@ -676,6 +675,8 @@ void make_palette(PaletteDef const &pal_data) {
     elem_end = range.last_index;
     difference = std::abs(elem_end - elem_start);
 
+    // These are asserted rather than clamped because it indicates a problem
+    // with the data
     working_red = assert_color(range.first_color.r);
     working_green = assert_color(range.first_color.g);
     working_blue = assert_color(range.first_color.b);
@@ -683,9 +684,9 @@ void make_palette(PaletteDef const &pal_data) {
     green_end = assert_color(range.last_color.g);
     blue_end = assert_color(range.last_color.b);
 
-    red_inc = (float)(red_end - working_red) / (float)difference;
-    green_inc = (float)(green_end - working_green) / (float)difference;
-    blue_inc = (float)(blue_end - working_blue) / (float)difference;
+    red_inc = (red_end - working_red) / difference;
+    green_inc = (green_end - working_green) / difference;
+    blue_inc = (blue_end - working_blue) / difference;
 
     for (int j = elem_start; j <= elem_end; j++) {
       s_pal_entry(static_cast<uint8_t>(j), static_cast<uint8_t>(working_red),
