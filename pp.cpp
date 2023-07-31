@@ -710,14 +710,14 @@ void blur() {
       const int index = target_y[y] + target_x[x];
 
       // Center pixel gets 8x weight
-      weighted_sum += (back_buffer[index]) << 3;
+      weighted_sum += (back_buffer[index]) << 2;
 
       // Top, bottom, left, right get 1x weight
-      weighted_sum += back_buffer[index + 1];
-      weighted_sum += back_buffer[index + SCREEN_WIDTH];
+      weighted_sum += back_buffer[index + 1] << 1;
+      weighted_sum += back_buffer[index + SCREEN_WIDTH] << 1;
 
-      weighted_sum += back_buffer[index - 1];
-      weighted_sum += back_buffer[index - SCREEN_WIDTH];
+      weighted_sum += back_buffer[index - 1] << 1;
+      weighted_sum += back_buffer[index - SCREEN_WIDTH] << 1;
 
       int target_color = weighted_averages[weighted_sum];
       if (is_noisy)
