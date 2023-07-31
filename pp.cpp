@@ -224,7 +224,7 @@ short weighted_averages[MAX_WEIGHT * MAX_COLOR];
 
 float ball_x, ball_y, ball_x_delta, ball_y_delta, x_temp, y_temp;
 
-void draw_score(uint8_t *buffer, int x, int y);
+void draw_number(uint8_t *buffer, int x, int y, int number);
 
 #define MAX_PALETTE_RANGES 8
 
@@ -539,7 +539,7 @@ int main() {
         for (; score > 0; score--) {
           for (int frame = 0; frame < COUNTDOWN_FRAMES; ++frame) {
             blur();
-            draw_score(front_buffer, COUNTDOWN_X, COUNTDOWN_Y);
+            draw_number(front_buffer, COUNTDOWN_X, COUNTDOWN_Y, score);
             show_buffer(front_buffer);
           }
         }
@@ -589,7 +589,7 @@ int main() {
 
     blur();
 
-    draw_score(front_buffer, SCORE_X, SCORE_Y);
+    draw_number(front_buffer, SCORE_X, SCORE_Y, score);
 
     // draw paddles
 
@@ -767,23 +767,22 @@ inline void draw_digit(uint8_t *buffer, int x, int y, int digit) {
   }
 }
 
-void draw_score(uint8_t *buffer, int x, int y) {
-  if (score < 10) {
-    draw_digit(buffer, x, y, score);
+void draw_number(uint8_t *buffer, int x, int y, int number) {
+  if (number < 10) {
+    draw_digit(buffer, x, y, number);
     return;
   }
 
   int divisor = 10000; // Max 16-bit power of 10
-  while (divisor > score) {
+  while (divisor > number) {
     divisor /= 10;
   }
-  int value = score;
   int offset = 0;
   do {
-    int digit = value / divisor;
+    int digit = number / divisor;
     draw_digit(buffer, x + offset, y, digit);
     offset += DIGIT_SPACING;
-    value %= divisor;
+    number %= divisor;
     divisor /= 10;
   } while (divisor > 0);
 }
