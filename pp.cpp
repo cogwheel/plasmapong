@@ -763,11 +763,15 @@ void init() {
 
   for (int i = 0; i < SCREEN_WIDTH; i++) {
     short target = ((i - MID_X) / 1.03) + MID_X;
+    if (target < (MID_X - 1))
+      ++target;
     target_x[i] = clamp<short>(target, 0, SCREEN_WIDTH);
   }
 
   for (int i = 0; i < SCREEN_HEIGHT; i++) {
     short target = (((i - MID_Y) / 1.03) + MID_Y);
+    if (i < (MID_Y - 1))
+      ++target;
     target_y[i] = SCREEN_WIDTH * clamp<short>(target, 0, SCREEN_HEIGHT);
   }
 
