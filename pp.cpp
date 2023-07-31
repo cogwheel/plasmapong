@@ -42,23 +42,22 @@ void init();
 void blur();
 struct PaletteDef;
 void make_palette(PaletteDef const &pal_data);
-inline void waves();
-inline void dots();
-inline void lines();
+
+typedef void (*EffectFunc)(uint8_t *);
+
+inline void none(uint8_t *) {}
+
+inline void waves(uint8_t *buffer);
+inline void dots(uint8_t *buffer);
+inline void lines(uint8_t *buffer);
+
+static const EffectFunc effects[] = {none, dots, lines, waves};
+
+#define NUM_EFFECTS (sizeof(effects) / sizeof(EffectFunc))
 
 template <typename T> inline T clamp(T val, T min, T max) {
   return val < min ? min : val > max ? max : val;
 }
-
-enum Effect {
-  kNone,
-  kDots,
-  kLines,
-  kWaves,
-  kNumEffects,
-};
-
-Effect curr_effect;
 
 int score;
 
@@ -501,9 +500,9 @@ void line(uint8_t *buffer, int x1, int y1, int x2, int y2, uint8_t color) {
 
 #define START_SPEED 2.3
 
-inline Effect choose_effect() {
-  return static_cast<Effect>(get_rnd() % kNumEffects);
-}
+inline EffectFunc choose_effect() { return effects[get_rnd() % NUM_EFFECTS]; }
+
+EffectFunc curr_effect = none;
 
 void init_game() {
   init_rnd();
@@ -548,24 +547,6 @@ int main() {
 
   MouseState mouse;
   for (get_mouse_state(mouse); mouse.buttons != QUIT; get_mouse_state(mouse)) {
-    switch (curr_effect) {
-    case kNone:
-      // Nothing is an effect
-      break;
-    case kDots:
-      dots();
-      break;
-    case kLines:
-      lines();
-      break;
-    case kWaves:
-      waves();
-      break;
-    default:
-      std::cerr << "Invalid Effect value " << int(curr_effect) << "\n";
-      std::exit(1);
-    }
-
     x_temp = ball_x;
     y_temp = ball_y;
 
@@ -621,6 +602,8 @@ int main() {
     }
 
     blur();
+
+    curr_effect(front_buffer);
 
     draw_number(front_buffer, SCORE_X, SCORE_Y, score);
 
@@ -824,33 +807,33 @@ void draw_number(uint8_t *buffer, int x, int y, int number) {
   } while (divisor > 0);
 }
 
-inline void waves() {
+inline void waves(uint8_t *buffer) {
   int vertices[11];
   for (int i = 0; i <= 10; i++) {
     vertices[i] = get_rnd() % 60 + 60;
   }
   for (int i = 0; i < 10; i++) {
-    line(back_buffer, i * 32, vertices[i], i * 32 + 32, vertices[i + 1], 128);
+    line(buffer, i * 32, vertices[i], i * 32 + 32, vertices[i + 1], 128);
   }
 }
 
-inline void dots() {
+inline void dots(uint8_t *buffer) {
   for (int i = 0; i < 8; i++) {
     int drop_x = get_rnd() % (SCREEN_WIDTH - 3),
         drop_y = get_rnd() % (SCREEN_HEIGHT - 3);
     // top-mid
-    set_pixel(back_buffer, drop_x + 1, drop_y, MAX_COLOR);
+    set_pixel(buffer, drop_x + 1, drop_y, MAX_COLOR);
 
     // middle row
-    set_pixels(back_buffer, drop_x, drop_y + 1, MAX_COLOR, 3);
+    set_pixels(buffer, drop_x, drop_y + 1, MAX_COLOR, 3);
 
     // bottom mid
-    set_pixel(back_buffer, drop_x + 1, drop_y + 2, MAX_COLOR);
+    set_pixel(buffer, drop_x + 1, drop_y + 2, MAX_COLOR);
   }
 }
 
-inline void lines() {
-  line(back_buffer, get_rnd() % SCREEN_WIDTH, get_rnd() % SCREEN_HEIGHT,
+inline void lines(uint8_t *buffer) {
+  line(buffer, get_rnd() % SCREEN_WIDTH, get_rnd() % SCREEN_HEIGHT,
        get_rnd() % SCREEN_WIDTH, get_rnd() % SCREEN_HEIGHT,
        static_cast<uint8_t>(get_rnd() % NUM_COLORS));
 }
