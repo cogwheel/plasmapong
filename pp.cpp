@@ -38,10 +38,10 @@ using std::uint8_t;
 // TODO: Rearrange so we don't need prototypes?
 
 // prototypes:
-void init();
-void blur();
+void init(uint8_t *&front_buffer, uint8_t *&back_buffer);
+void blur(uint8_t *front_buffer, uint8_t *back_buffer, bool is_noisy);
 struct PaletteDef;
-void make_palette(PaletteDef const &pal_data);
+void set_palette(PaletteDef const &pal_data, bool &is_noisy);
 
 typedef void (*EffectFunc)(uint8_t *);
 
@@ -58,8 +58,6 @@ static const EffectFunc effects[] = {none, dots, lines, waves};
 template <typename T> inline T clamp(T val, T min, T max) {
   return val < min ? min : val > max ? max : val;
 }
-
-int score;
 
 #define DIGIT_WIDTH 5
 #define DIGIT_HEIGHT 7
@@ -156,14 +154,14 @@ const uint8_t digit_sprites[][DIGIT_HEIGHT][DIGIT_WIDTH] = {
 
 int rnd_tbl[MAX_RAND_NUMS];
 int next_rnd_index;
-float speed;
-bool is_noisy;
 
 #define NEBULA_PARTICLES 25
-float neb_x[NEBULA_PARTICLES], neb_y[NEBULA_PARTICLES];
-uint8_t neb_a[NEBULA_PARTICLES];
+struct Nebula {
+  float x[NEBULA_PARTICLES];
+  float y[NEBULA_PARTICLES];
+  uint8_t omega[NEBULA_PARTICLES];
+};
 
-// TODO: these should be 256 not 255
 #define NUM_ANGLES 256
 double cosTable[NUM_ANGLES], sinTable[NUM_ANGLES];
 
@@ -224,8 +222,6 @@ unsigned short target_y[SCREEN_HEIGHT];
 #define MAX_WEIGHT 12
 #define DIM_AMOUNT 0.1
 short weighted_averages[MAX_WEIGHT * MAX_COLOR];
-
-float ball_x, ball_y, ball_x_delta, ball_y_delta, x_temp, y_temp;
 
 void draw_number(uint8_t *buffer, int x, int y, int number);
 
@@ -350,10 +346,9 @@ PaletteDef pal_table[] = {
 #define NUM_PALETTES (sizeof(pal_table) / sizeof(PaletteDef))
 
 uint8_t *vga = (uint8_t *)0xA0000000L; // location of video memory
-uint8_t *front_buffer, *back_buffer;
 
 void set_pixel(uint8_t *buffer, int x, int y, uint8_t color);
-void show_buffer(uint8_t *buffer);
+void show_buffer(uint8_t *&front_buffer, uint8_t *&back_buffer);
 void s_pal_entry(uint8_t index, uint8_t red, uint8_t green, uint8_t blue);
 void line(uint8_t *buffer, int x1, int y1, int x2, int y2, uint8_t color);
 
@@ -376,17 +371,17 @@ struct MouseState {
   int x, y, buttons;
 };
 
-void get_mouse_state(MouseState &state) {
+void get_mouse_state(MouseState &mouse) {
   REGS regs;
   regs.x.ax = MOUSE_STATUS;
   int86(MOUSE_INT, &regs, &regs);
 
   // I *think* this magic math normalizes the mouse coordinates to the range
   // of the paddles
-  state.x = regs.x.cx * 0.420062695924 + 26;
-  state.y = regs.x.dx * 0.74 + 26;
+  mouse.x = regs.x.cx * 0.420062695924 + 26;
+  mouse.y = regs.x.dx * 0.74 + 26;
 
-  state.buttons = regs.x.bx;
+  mouse.buttons = regs.x.bx;
 }
 
 #define INDEX_OF(x, y) ((y)*SCREEN_WIDTH + (x))
@@ -406,14 +401,14 @@ inline void set_pixels(uint8_t *buffer, int x, int y, uint8_t color, int size) {
   std::memset(buffer + INDEX_OF(x, y), color, size);
 }
 
-inline void show_buffer(uint8_t *buffer) {
+inline void show_buffer(uint8_t *&front_buffer, uint8_t *&back_buffer) {
   while ((inp(INPUT_STATUS) & VRETRACE))
     ;
   while (!(inp(INPUT_STATUS) & VRETRACE))
     ;
 
+  std::memcpy(vga, front_buffer, SCREEN_SIZE);
   std::swap(front_buffer, back_buffer);
-  std::memcpy(vga, buffer, SCREEN_SIZE);
 }
 
 inline void s_pal_entry(uint8_t index, uint8_t red, uint8_t green,
@@ -502,18 +497,36 @@ void line(uint8_t *buffer, int x1, int y1, int x2, int y2, uint8_t color) {
 
 inline EffectFunc choose_effect() { return effects[get_rnd() % NUM_EFFECTS]; }
 
-EffectFunc curr_effect = none;
+struct GameData {
+  float ball_x, ball_y, ball_dx, ball_dy;
+  float speed;
 
-void init_game() {
+  EffectFunc curr_effect;
+  int score;
+
+  bool is_noisy;
+
+  Nebula nebula;
+};
+
+void init_game(GameData &g) {
   init_rnd();
-  ball_x = MID_X;
-  ball_y = MID_Y;
-  ball_x_delta = (get_rnd() % 2) ? START_SPEED : -START_SPEED;
-  ball_y_delta = (get_rnd() % 2) ? START_SPEED : -START_SPEED;
-  speed = START_SPEED;
-  make_palette(pal_table[get_rnd() % NUM_PALETTES]);
-  curr_effect = choose_effect();
-  score = 0;
+  set_palette(pal_table[get_rnd() % NUM_PALETTES], g.is_noisy);
+
+  g.ball_x = MID_X;
+  g.ball_y = MID_Y;
+  g.ball_dx = (get_rnd() % 2) ? START_SPEED : -START_SPEED;
+  g.ball_dy = (get_rnd() % 2) ? START_SPEED : -START_SPEED;
+  g.speed = START_SPEED;
+  g.curr_effect = choose_effect();
+  g.score = 0;
+
+  for (int i = 0; i < NEBULA_PARTICLES; i++) {
+    g.nebula.x[i] = get_rnd() % 3 - 5;
+    g.nebula.y[i] = get_rnd() % 3 - 5;
+    // Take advantage of uint underflow to create complementary angles
+    g.nebula.omega[i] = static_cast<uint8_t>(get_rnd() % 30 - 15);
+  }
 }
 
 enum Direction {
@@ -521,51 +534,55 @@ enum Direction {
   kReverse = -1,
 };
 
-void process_hit(float &front_delta, float &front_pos, const float temp_pos,
-                 float &side_delta, const float side_pos, const float mouse_pos,
-                 const Direction direction) {
+void process_hit(GameData &g, float &front_delta, float &front_pos,
+                 const float temp_pos, float &side_delta, const float side_pos,
+                 const float mouse_pos, const Direction direction) {
   // TODO: use the speed as an actual magnitude
-  speed += .05;
-  front_delta = speed * direction;
+  g.speed += .05;
+  front_delta = g.speed * direction;
   // TODO: instead of reseting to previous pos, reflect across the paddle
   front_pos = temp_pos;
   side_delta = (side_pos - mouse_pos) / 4;
-  make_palette(pal_table[get_rnd() % NUM_PALETTES]);
-  curr_effect = choose_effect();
-  score++;
+  set_palette(pal_table[get_rnd() % NUM_PALETTES], g.is_noisy);
+  g.curr_effect = choose_effect();
+  g.score++;
 }
 
 int main() {
   uint8_t old_mode = get_mode();
 
-  init();
+  uint8_t *front_buffer, *back_buffer;
+  init(front_buffer, back_buffer);
 
   if (get_mode() != VGA_256_COLOR_MODE) {
     std::cerr << "Unable to set 320x200x256 color mode\n";
     std::exit(1);
   }
 
+  GameData g;
+  init_game(g);
+
   MouseState mouse;
   for (get_mouse_state(mouse); mouse.buttons != QUIT; get_mouse_state(mouse)) {
-    x_temp = ball_x;
-    y_temp = ball_y;
+    float prev_x = g.ball_x;
+    float prev_y = g.ball_y;
 
-    ball_x += ball_x_delta;
-    ball_y += ball_y_delta;
+    g.ball_x += g.ball_dx;
+    g.ball_y += g.ball_dy;
 
     // TODO: De-nest these ifs (outer one seems redundant; might be
     // optimization)
-    if (ball_x > (SCREEN_WIDTH - COLLISION_THRESHOLD) ||
-        ball_x < COLLISION_THRESHOLD ||
-        ball_y > (SCREEN_HEIGHT - COLLISION_THRESHOLD) ||
-        ball_y < COLLISION_THRESHOLD) {
-      if (ball_x >= SCREEN_WIDTH || ball_x < 0 || ball_y >= SCREEN_HEIGHT ||
-          ball_y < 0) {
-        for (; score > 0; score--) {
+    if (g.ball_x > (SCREEN_WIDTH - COLLISION_THRESHOLD) ||
+        g.ball_x < COLLISION_THRESHOLD ||
+        g.ball_y > (SCREEN_HEIGHT - COLLISION_THRESHOLD) ||
+        g.ball_y < COLLISION_THRESHOLD) {
+      if (g.ball_x >= SCREEN_WIDTH || g.ball_x < 0 ||
+          g.ball_y >= SCREEN_HEIGHT || g.ball_y < 0) {
+        for (; g.score > 0; g.score--) {
           for (int frame = 0; frame < COUNTDOWN_FRAMES; ++frame) {
-            blur();
-            draw_number(front_buffer, COUNTDOWN_X, COUNTDOWN_Y, score);
-            show_buffer(front_buffer);
+            blur(front_buffer, back_buffer, g.is_noisy);
+            draw_number(front_buffer, COUNTDOWN_X, COUNTDOWN_Y, g.score);
+            show_buffer(front_buffer, back_buffer);
 
             // TODO: Use a state machine so this is handled by the outer loop
             get_mouse_state(mouse);
@@ -573,39 +590,40 @@ int main() {
               goto quit;
           }
         }
-        init_game();
+        init_game(g);
       }
-      if (ball_y > (mouse.y - HALF_PADDLE_HIT) &&
-          ball_y < (mouse.y + HALF_PADDLE_HIT) && ball_x < PADDLE_MARGIN_HIT) {
+      if (g.ball_y > (mouse.y - HALF_PADDLE_HIT) &&
+          g.ball_y < (mouse.y + HALF_PADDLE_HIT) &&
+          g.ball_x < PADDLE_MARGIN_HIT) {
         // Left paddle hit
-        process_hit(ball_x_delta, ball_x, x_temp, ball_y_delta, ball_y, mouse.y,
-                    kForward);
-      } else if (ball_y < (MAX_Y - (mouse.y - HALF_PADDLE_HIT)) &&
-                 ball_y > (MAX_Y - (mouse.y + HALF_PADDLE_HIT)) &&
-                 ball_x > (SCREEN_WIDTH - PADDLE_MARGIN_HIT)) {
+        process_hit(g, g.ball_dx, g.ball_x, prev_x, g.ball_dy, g.ball_y,
+                    mouse.y, kForward);
+      } else if (g.ball_y < (MAX_Y - (mouse.y - HALF_PADDLE_HIT)) &&
+                 g.ball_y > (MAX_Y - (mouse.y + HALF_PADDLE_HIT)) &&
+                 g.ball_x > (SCREEN_WIDTH - PADDLE_MARGIN_HIT)) {
         // Right paddle hit
-        process_hit(ball_x_delta, ball_x, x_temp, ball_y_delta, ball_y,
+        process_hit(g, g.ball_dx, g.ball_x, prev_x, g.ball_dy, g.ball_y,
                     MAX_Y - mouse.y, kReverse);
-      } else if (ball_x < (MAX_X - (mouse.x - HALF_PADDLE_HIT)) &&
-                 ball_x > (MAX_X - (mouse.x + HALF_PADDLE_HIT)) &&
-                 ball_y < PADDLE_MARGIN_HIT) {
+      } else if (g.ball_x < (MAX_X - (mouse.x - HALF_PADDLE_HIT)) &&
+                 g.ball_x > (MAX_X - (mouse.x + HALF_PADDLE_HIT)) &&
+                 g.ball_y < PADDLE_MARGIN_HIT) {
         // top paddle hit
-        process_hit(ball_y_delta, ball_y, y_temp, ball_x_delta, ball_x,
+        process_hit(g, g.ball_dy, g.ball_y, prev_y, g.ball_dx, g.ball_x,
                     MAX_X - mouse.x, kForward);
-      } else if (ball_x > (mouse.x - HALF_PADDLE_HIT) &&
-                 ball_x < (mouse.x + HALF_PADDLE_HIT) &&
-                 ball_y >= (SCREEN_HEIGHT - PADDLE_MARGIN_HIT)) {
+      } else if (g.ball_x > (mouse.x - HALF_PADDLE_HIT) &&
+                 g.ball_x < (mouse.x + HALF_PADDLE_HIT) &&
+                 g.ball_y >= (SCREEN_HEIGHT - PADDLE_MARGIN_HIT)) {
         // bottom paddle hit
-        process_hit(ball_y_delta, ball_y, y_temp, ball_x_delta, ball_x, mouse.x,
-                    kReverse);
+        process_hit(g, g.ball_dy, g.ball_y, prev_y, g.ball_dx, g.ball_x,
+                    mouse.x, kReverse);
       }
     }
 
-    blur();
+    blur(front_buffer, back_buffer, g.is_noisy);
 
-    curr_effect(front_buffer);
+    g.curr_effect(front_buffer);
 
-    draw_number(front_buffer, SCORE_X, SCORE_Y, score);
+    draw_number(front_buffer, SCORE_X, SCORE_Y, g.score);
 
     // draw paddles
 
@@ -625,23 +643,25 @@ int main() {
 
     // Draw "nucleus" (i think?)
     for (int i = 0; i < 5; i++) {
-      line(front_buffer, (int)ball_x + get_rnd() % 6 - 3,
-           (int)ball_y + get_rnd() % 6 - 3, (int)ball_x + get_rnd() % 6 - 3,
-           (int)ball_y + get_rnd() % 6 - 3, 230);
+      line(front_buffer, (int)g.ball_x + get_rnd() % 6 - 3,
+           (int)g.ball_y + get_rnd() % 6 - 3, (int)g.ball_x + get_rnd() % 6 - 3,
+           (int)g.ball_y + get_rnd() % 6 - 3, 230);
     }
 
-    float tempX;
     for (int i = 0; i < NEBULA_PARTICLES; i++) {
 
-      tempX = neb_x[i];
+      float orig_x = g.nebula.x[i];
 
-      neb_x[i] = neb_x[i] * cosTable[neb_a[i]] - neb_y[i] * sinTable[neb_a[i]];
-      neb_y[i] = neb_y[i] * cosTable[neb_a[i]] + tempX * sinTable[neb_a[i]];
+      g.nebula.x[i] = g.nebula.x[i] * cosTable[g.nebula.omega[i]] -
+                      g.nebula.y[i] * sinTable[g.nebula.omega[i]];
+      g.nebula.y[i] = g.nebula.y[i] * cosTable[g.nebula.omega[i]] +
+                      orig_x * sinTable[g.nebula.omega[i]];
 
-      set_pixel(front_buffer, neb_x[i] + ball_x, neb_y[i] + ball_y, MAX_COLOR);
+      set_pixel(front_buffer, g.nebula.x[i] + g.ball_x,
+                g.nebula.y[i] + g.ball_y, MAX_COLOR);
     }
 
-    show_buffer(front_buffer);
+    show_buffer(front_buffer, back_buffer);
   }
 
 quit:
@@ -661,7 +681,7 @@ uint8_t assert_color(uint8_t color) {
   return color;
 }
 
-void make_palette(PaletteDef const &pal_data) {
+void set_palette(PaletteDef const &pal_data, bool &is_noisy) {
   uint8_t elem_start, elem_end, red_end, green_end, blue_end;
 
   float red_inc, green_inc, blue_inc, difference, working_red, working_green,
@@ -700,7 +720,7 @@ void make_palette(PaletteDef const &pal_data) {
   is_noisy = pal_data.is_noisy;
 }
 
-void blur() {
+void blur(uint8_t *front_buffer, uint8_t *back_buffer, bool is_noisy) {
   /*   int rand_x=0, rand_y=0;
   rand_x=rand()%4-2; rand_y=rand()%4-2; */
   for (int y = 0; y < SCREEN_HEIGHT; y++) {
@@ -727,7 +747,7 @@ void blur() {
   }
 }
 
-void init() {
+void init(uint8_t *&front_buffer, uint8_t *&back_buffer) {
   // allocate mem for the front_buffer
   if ((front_buffer = new uint8_t[SCREEN_SIZE]) == NULL) {
     std::cout << "Not enough memory for front buffer.\n";
@@ -770,14 +790,7 @@ void init() {
   }
 
   std::srand(15);
-  init_game();
-
-  for (int i = 0; i < NEBULA_PARTICLES; i++) {
-    neb_x[i] = get_rnd() % 3 - 5;
-    neb_y[i] = get_rnd() % 3 - 5;
-    // Take advantage of uint underflow to create complementary angles
-    neb_a[i] = static_cast<uint8_t>(get_rnd() % 30 - 15);
-  }
+  init_rnd();
 }
 
 inline void draw_digit(uint8_t *buffer, int x, int y, int digit) {
