@@ -187,7 +187,12 @@ void init_rnd() {
 #define SET_MODE 0x00           // BIOS func to set the video mode.
 #define GET_MODE 0x0F           // BIOS func to get the video mode.
 #define VGA_256_COLOR_MODE 0x13 // use to set 256-color mode.
-#define TEXT_MODE 0x03          // use to set 80x25 text mode.
+
+#define MOUSE_INT 0x33
+#define MOUSE_STATUS 0x3
+#define LMB 1
+#define RMB 2
+#define QUIT (LMB + RMB)
 
 #define SCREEN_WIDTH 320 // width in pixels of mode 0x13
 #define MAX_X (SCREEN_WIDTH - 1)
@@ -214,7 +219,6 @@ void init_rnd() {
 
 #define TAU 6.2831853071795864
 
-int mouse_x, mouse_y;
 unsigned short target_x[SCREEN_WIDTH];
 unsigned short target_y[SCREEN_HEIGHT];
 
@@ -362,11 +366,28 @@ uint8_t get_mode() {
 }
 
 void set_mode(uint8_t mode) {
-  union REGS regs;
+  REGS regs;
 
   regs.h.ah = SET_MODE;
   regs.h.al = mode;
   int86(VIDEO_INT, &regs, &regs);
+}
+
+struct MouseState {
+  int x, y, buttons;
+};
+
+void get_mouse_state(MouseState &state) {
+  REGS regs;
+  regs.x.ax = MOUSE_STATUS;
+  int86(MOUSE_INT, &regs, &regs);
+
+  // I *think* this magic math normalizes the mouse coordinates to the range
+  // of the paddles
+  state.x = regs.x.cx * 0.420062695924 + 26;
+  state.y = regs.x.dx * 0.74 + 26;
+
+  state.buttons = regs.x.bx;
 }
 
 inline void set_pixel(uint8_t *buffer, int x, int y, uint8_t color) {
@@ -491,17 +512,8 @@ int main() {
     std::exit(1);
   }
 
-  union REGS r;
-  r.x.bx = 0;
-  while (r.x.bx != 3) {
-    r.x.ax = 3;
-    int86(0x33, &r, &r);
-
-    // I *think* this magic math normalizes the mouse coordinates to the range
-    // of the paddles
-    mouse_x = r.x.cx * 0.420062695924 + 26;
-    mouse_y = r.x.dx * 0.74 + 26;
-
+  MouseState mouse;
+  for (get_mouse_state(mouse); mouse.buttons != QUIT; get_mouse_state(mouse)) {
     switch (curr_effect) {
     case kNone:
       // Nothing is an effect
@@ -534,53 +546,56 @@ int main() {
         ball_y < COLLISION_THRESHOLD) {
       if (ball_x >= SCREEN_WIDTH || ball_x < 0 || ball_y >= SCREEN_HEIGHT ||
           ball_y < 0) {
-        // TODO: Use a state machine or something so that input is still
-        // processed while score is counting
         for (; score > 0; score--) {
           for (int frame = 0; frame < COUNTDOWN_FRAMES; ++frame) {
             blur();
             draw_number(front_buffer, COUNTDOWN_X, COUNTDOWN_Y, score);
             show_buffer(front_buffer);
+
+            // TODO: Use a state machine so this is handled by the outer loop
+            get_mouse_state(mouse);
+            if (mouse.buttons == QUIT)
+              goto quit;
           }
         }
         init_game();
       }
-      if (ball_y > (mouse_y - HALF_PADDLE_HIT) &&
-          ball_y < (mouse_y + HALF_PADDLE_HIT) && ball_x < PADDLE_MARGIN_HIT) {
+      if (ball_y > (mouse.y - HALF_PADDLE_HIT) &&
+          ball_y < (mouse.y + HALF_PADDLE_HIT) && ball_x < PADDLE_MARGIN_HIT) {
         speed += .05;
         ball_x_delta = speed;
         ball_x = x_temp;
-        ball_y_delta = (ball_y - mouse_y) / 4;
+        ball_y_delta = (ball_y - mouse.y) / 4;
         make_palette(pal_table[get_rnd() % NUM_PALETTES]);
         curr_effect = choose_effect();
         score++;
-      } else if (ball_y < (MAX_Y - (mouse_y - HALF_PADDLE_HIT)) &&
-                 ball_y > (MAX_Y - (mouse_y + HALF_PADDLE_HIT)) &&
+      } else if (ball_y < (MAX_Y - (mouse.y - HALF_PADDLE_HIT)) &&
+                 ball_y > (MAX_Y - (mouse.y + HALF_PADDLE_HIT)) &&
                  ball_x > (SCREEN_WIDTH - PADDLE_MARGIN_HIT)) {
         speed += .05;
         ball_x_delta = -1 * speed;
         ball_x = x_temp;
-        ball_y_delta = (ball_y - (MAX_Y - mouse_y)) / 4;
+        ball_y_delta = (ball_y - (MAX_Y - mouse.y)) / 4;
         make_palette(pal_table[get_rnd() % NUM_PALETTES]);
         curr_effect = choose_effect();
         score++;
-      } else if (ball_x < (MAX_X - (mouse_x - HALF_PADDLE_HIT)) &&
-                 ball_x > (MAX_X - (mouse_x + HALF_PADDLE_HIT)) &&
+      } else if (ball_x < (MAX_X - (mouse.x - HALF_PADDLE_HIT)) &&
+                 ball_x > (MAX_X - (mouse.x + HALF_PADDLE_HIT)) &&
                  ball_y < PADDLE_MARGIN_HIT) {
         speed += .05;
         ball_y_delta = speed;
         ball_y = y_temp;
-        ball_x_delta = (ball_x - (MAX_X - mouse_x)) / 4;
+        ball_x_delta = (ball_x - (MAX_X - mouse.x)) / 4;
         make_palette(pal_table[get_rnd() % NUM_PALETTES]);
         score++;
         curr_effect = choose_effect();
-      } else if (ball_x > (mouse_x - HALF_PADDLE_HIT) &&
-                 ball_x < (mouse_x + HALF_PADDLE_HIT) &&
+      } else if (ball_x > (mouse.x - HALF_PADDLE_HIT) &&
+                 ball_x < (mouse.x + HALF_PADDLE_HIT) &&
                  ball_y >= (SCREEN_HEIGHT - PADDLE_MARGIN_HIT)) {
         speed += .05;
         ball_y_delta = -1 * speed;
         ball_y = y_temp;
-        ball_x_delta = (ball_x - mouse_x) / 4;
+        ball_x_delta = (ball_x - mouse.x) / 4;
         make_palette(pal_table[get_rnd() % NUM_PALETTES]);
         score++;
         curr_effect = choose_effect();
@@ -594,18 +609,18 @@ int main() {
     // draw paddles
 
     // TOP
-    line(front_buffer, MAX_X - (mouse_x - HALF_PADDLE), PADDLE_MARGIN,
-         MAX_X - (mouse_x + HALF_PADDLE), PADDLE_MARGIN, MAX_COLOR);
+    line(front_buffer, MAX_X - (mouse.x - HALF_PADDLE), PADDLE_MARGIN,
+         MAX_X - (mouse.x + HALF_PADDLE), PADDLE_MARGIN, MAX_COLOR);
     // BOTTOM
-    line(front_buffer, mouse_x - HALF_PADDLE, SCREEN_HEIGHT - PADDLE_MARGIN,
-         mouse_x + HALF_PADDLE, SCREEN_HEIGHT - PADDLE_MARGIN, MAX_COLOR);
+    line(front_buffer, mouse.x - HALF_PADDLE, SCREEN_HEIGHT - PADDLE_MARGIN,
+         mouse.x + HALF_PADDLE, SCREEN_HEIGHT - PADDLE_MARGIN, MAX_COLOR);
     // LEFT
-    line(front_buffer, PADDLE_MARGIN, mouse_y - HALF_PADDLE, PADDLE_MARGIN,
-         mouse_y + HALF_PADDLE, MAX_COLOR);
+    line(front_buffer, PADDLE_MARGIN, mouse.y - HALF_PADDLE, PADDLE_MARGIN,
+         mouse.y + HALF_PADDLE, MAX_COLOR);
     // RIGHT
     line(front_buffer, SCREEN_WIDTH - PADDLE_MARGIN,
-         MAX_Y - (mouse_y - HALF_PADDLE), SCREEN_WIDTH - PADDLE_MARGIN,
-         MAX_Y - (mouse_y + HALF_PADDLE), MAX_COLOR);
+         MAX_Y - (mouse.y - HALF_PADDLE), SCREEN_WIDTH - PADDLE_MARGIN,
+         MAX_Y - (mouse.y + HALF_PADDLE), MAX_COLOR);
 
     // Draw "nucleus" (i think?)
     for (int i = 0; i < 5; i++) {
@@ -628,6 +643,7 @@ int main() {
     show_buffer(front_buffer);
   }
 
+quit:
   set_mode(old_mode);
 
   return 0;

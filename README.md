@@ -38,7 +38,6 @@ To exit, click both left and right mouse buttons simultaneously.
 
 ## Known issues
 
-* Inputs ignored (can't exit) while score is counting down after a game
 * Blur effect isn't centered on the screen
 * Score is not very legible, especially during countdown
 * Ball speed calculation is wonky; there is both a `speed` and `ball_[xy]_delta`
