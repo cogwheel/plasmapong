@@ -799,12 +799,18 @@ inline void waves() {
 
 inline void dots() {
   for (int i = 0; i < 8; i++) {
-    int drop_x = get_rnd() % SCREEN_WIDTH, drop_y = get_rnd() % SCREEN_HEIGHT;
-    set_pixel(back_buffer, drop_x, drop_y, MAX_COLOR);
+    int drop_x = get_rnd() % (SCREEN_WIDTH - 3),
+        drop_y = get_rnd() % (SCREEN_HEIGHT - 3);
+    // top-mid
     set_pixel(back_buffer, drop_x + 1, drop_y, MAX_COLOR);
-    set_pixel(back_buffer, drop_x - 1, drop_y, MAX_COLOR);
-    set_pixel(back_buffer, drop_x, drop_y + 1, MAX_COLOR);
-    set_pixel(back_buffer, drop_x, drop_y - 1, MAX_COLOR);
+
+    // middle row
+    set_pixel(back_buffer, drop_x + 0, drop_y + 1, MAX_COLOR);
+    set_pixel(back_buffer, drop_x + 1, drop_y + 1, MAX_COLOR);
+    set_pixel(back_buffer, drop_x + 2, drop_y + 1, MAX_COLOR);
+
+    // bottom mid
+    set_pixel(back_buffer, drop_x + 1, drop_y + 2, MAX_COLOR);
   }
 }
 

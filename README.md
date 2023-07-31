@@ -42,4 +42,3 @@ To exit, click both left and right mouse buttons simultaneously.
 * Blur effect isn't centered on the screen
 * Score is not very legible, especially during countdown
 * Ball speed calculation is wonky; there is both a `speed` and `ball_[xy]_delta`
-* DOS crash upon exit introduced in 8b1afa55800a3fee7fd5335dad6e8a0337253666
