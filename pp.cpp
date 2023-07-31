@@ -540,10 +540,12 @@ void init_game(GameData &g) {
   init_rnd();
   set_palette(pal_table[get_rnd() % NUM_PALETTES], g.is_noisy);
 
+  static const float diag_start = START_SPEED / std::sqrt(2.0);
+
   g.ball_x = MID_X;
   g.ball_y = MID_Y;
-  g.ball_dx = (get_rnd() % 2) ? START_SPEED : -START_SPEED;
-  g.ball_dy = (get_rnd() % 2) ? START_SPEED : -START_SPEED;
+  g.ball_dx = (get_rnd() % 2) ? diag_start : -diag_start;
+  g.ball_dy = (get_rnd() % 2) ? diag_start : -diag_start;
   g.speed = START_SPEED;
   g.curr_effect = choose_effect();
   g.score = 0;
