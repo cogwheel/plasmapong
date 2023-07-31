@@ -24,6 +24,7 @@ SOFTWARE.
 
 #include <algorithm>
 #include <cassert>
+#include <cfloat>
 #include <cmath>
 #include <cstdint>
 #include <cstdlib>
@@ -76,6 +77,7 @@ using std::uint8_t;
 #define NUM_COLORS 256 // number of colors in mode 0x13
 #define MAX_COLOR (NUM_COLORS - 1)
 #define MAX_COLOR_COMPONENT 63 // RGB components in the palette
+#define GAMMA ((float)2.2)
 
 #define DIGIT_WIDTH 5
 #define DIGIT_HEIGHT 7
@@ -85,7 +87,7 @@ using std::uint8_t;
 #define MAX_PALETTE_RANGES 8
 
 #define MAX_WEIGHT 12
-#define DIM_AMOUNT 0.1
+#define DIM_AMOUNT 0.2
 
 // LUT sizes
 #define MAX_RAND_NUMS 1021
@@ -536,38 +538,36 @@ uint8_t assert_color(uint8_t color) {
 }
 
 void set_palette(PaletteDef const &pal_data, bool &is_noisy) {
-  uint8_t elem_start, elem_end, red_end, green_end, blue_end;
-
   float red_inc, green_inc, blue_inc, difference, working_red, working_green,
-      working_blue;
+      working_blue, red_end, green_end, blue_end;
 
+  // TODO: maybe precalculate the palettes
   for (int i = 0; i <= pal_data.num_ranges; ++i) {
     PaletteRange const &range = pal_data.ranges[i];
-    elem_start = range.first_index;
-    elem_end = range.last_index;
-    difference = std::abs(elem_end - elem_start);
+    difference = range.last_index - range.first_index;
 
-    // These are asserted rather than clamped because it indicates a problem
-    // with the data
-    working_red = assert_color(range.first_color.r);
-    working_green = assert_color(range.first_color.g);
-    working_blue = assert_color(range.first_color.b);
-    red_end = assert_color(range.last_color.r);
-    green_end = assert_color(range.last_color.g);
-    blue_end = assert_color(range.last_color.b);
+    working_red = std::pow(range.first_color.r, GAMMA);
+    working_green = std::pow(range.first_color.g, GAMMA);
+    working_blue = std::pow(range.first_color.b, GAMMA);
+
+    red_end = std::pow(range.last_color.r, GAMMA);
+    green_end = std::pow(range.last_color.g, GAMMA);
+    blue_end = std::pow(range.last_color.b, GAMMA);
 
     red_inc = (red_end - working_red) / difference;
     green_inc = (green_end - working_green) / difference;
     blue_inc = (blue_end - working_blue) / difference;
 
-    for (int j = elem_start; j <= elem_end; j++) {
-      s_pal_entry(static_cast<uint8_t>(j), static_cast<uint8_t>(working_red),
-                  static_cast<uint8_t>(working_green),
-                  static_cast<uint8_t>(working_blue));
+    for (int j = range.first_index; j <= range.last_index; j++) {
+      s_pal_entry(
+          static_cast<uint8_t>(j),
+          static_cast<uint8_t>(clamp_color(std::pow(working_red, 1 / GAMMA))),
+          static_cast<uint8_t>(clamp_color(std::pow(working_green, 1 / GAMMA))),
+          static_cast<uint8_t>(clamp_color(std::pow(working_blue, 1 / GAMMA))));
 
-      working_red = clamp_color(working_red + red_inc);
-      working_green = clamp_color(working_green + green_inc);
-      working_blue = clamp_color(working_blue + blue_inc);
+      working_red = clamp(working_red + red_inc, 0.f, FLT_MAX);
+      working_green = clamp(working_green + green_inc, 0.f, FLT_MAX);
+      working_blue = clamp(working_blue + blue_inc, 0.f, FLT_MAX);
     }
   }
 
