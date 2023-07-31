@@ -68,7 +68,7 @@ int score;
 #define DIGIT_SPACING 7
 
 // clang-format off
-uint8_t digit_sprites[][DIGIT_HEIGHT][DIGIT_WIDTH] = {
+const uint8_t digit_sprites[][DIGIT_HEIGHT][DIGIT_WIDTH] = {
   { 0, 255, 255, 255, 0,
     255, 0, 0, 0, 255,
     255, 0, 0, 0, 255,
@@ -390,8 +390,21 @@ void get_mouse_state(MouseState &state) {
   state.buttons = regs.x.bx;
 }
 
+#define INDEX_OF(x, y) ((y)*SCREEN_WIDTH + (x))
+
 inline void set_pixel(uint8_t *buffer, int x, int y, uint8_t color) {
-  buffer[y * SCREEN_WIDTH + x] = color;
+  buffer[INDEX_OF(x, y)] = color;
+}
+
+inline void set_pixels(uint8_t *buffer, int x, int y, uint8_t color, int size) {
+  if (size == 0)
+    return;
+  if (size == 1) {
+    set_pixel(buffer, x, y, color);
+    return;
+  }
+
+  std::memset(buffer + INDEX_OF(x, y), color, size);
 }
 
 inline void show_buffer(uint8_t *buffer) {
@@ -416,8 +429,10 @@ inline void s_pal_entry(uint8_t index, uint8_t red, uint8_t green,
 void line(uint8_t *buffer, int x1, int y1, int x2, int y2, uint8_t color) {
   int dx, dy, xinc, yinc, two_dx, two_dy, x = x1, y = y1, i, error;
 
-  if (x1 == x2 && y1 == y2) {
-    set_pixel(buffer, x1, y1, color);
+  if (y1 == y2) {
+    if (x2 < x1)
+      std::swap(x1, x2);
+    set_pixels(buffer, x1, y1, color, x2 - x1 + 1);
     return;
   }
 
@@ -780,10 +795,8 @@ void init() {
 
 inline void draw_digit(uint8_t *buffer, int x, int y, int digit) {
   for (int y_loop = 0; y_loop < DIGIT_HEIGHT; y_loop++) {
-    for (int x_loop = 0; x_loop < DIGIT_WIDTH; x_loop++) {
-      set_pixel(buffer, x_loop + x, y_loop + y,
-                digit_sprites[digit][y_loop][x_loop]);
-    }
+    std::memcpy(buffer + INDEX_OF(x, y + y_loop), digit_sprites[digit][y_loop],
+                DIGIT_WIDTH);
   }
 }
 
@@ -825,9 +838,7 @@ inline void dots() {
     set_pixel(back_buffer, drop_x + 1, drop_y, MAX_COLOR);
 
     // middle row
-    set_pixel(back_buffer, drop_x + 0, drop_y + 1, MAX_COLOR);
-    set_pixel(back_buffer, drop_x + 1, drop_y + 1, MAX_COLOR);
-    set_pixel(back_buffer, drop_x + 2, drop_y + 1, MAX_COLOR);
+    set_pixels(back_buffer, drop_x, drop_y + 1, MAX_COLOR, 3);
 
     // bottom mid
     set_pixel(back_buffer, drop_x + 1, drop_y + 2, MAX_COLOR);
