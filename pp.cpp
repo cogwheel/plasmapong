@@ -35,25 +35,90 @@ SOFTWARE.
 
 using std::uint8_t;
 
-// TODO: Rearrange so we don't need prototypes?
+// General
+#define TAU 6.2831853071795864
 
-// prototypes:
-void init(uint8_t *&front_buffer, uint8_t *&back_buffer);
-void blur(uint8_t *front_buffer, uint8_t *back_buffer, bool is_noisy);
-struct PaletteDef;
-void set_palette(PaletteDef const &pal_data, bool &is_noisy);
+// System
+#define VIDEO_INT 0x10          // the BIOS video interrupt.
+#define WRITE_DOT 0x0C          // BIOS func to plot a pixel.
+#define SET_MODE 0x00           // BIOS func to set the video mode.
+#define GET_MODE 0x0F           // BIOS func to get the video mode.
+#define VGA_256_COLOR_MODE 0x13 // use to set 256-color mode.
 
-template <typename T> inline T clamp(T val, T min, T max) {
-  return val < min ? min : val > max ? max : val;
-}
+#define MOUSE_INT 0x33
+#define MOUSE_STATUS 0x3
+#define LMB 1
+#define RMB 2
+#define QUIT (LMB + RMB)
+
+#define DISPLAY_ENABLE 0x01 // VGA input status bits
+#define INPUT_STATUS 0x03da
+#define VRETRACE 0x08
+
+#define PALETTE_MASK 0x03c6
+#define PALETTE_REGISTER_READ 0x03c7
+#define PALETTE_REGISTER_WRITE 0x03c8
+#define PALETTE_DATA 0x03c9
+
+// Graphics
+#define SCREEN_WIDTH 320 // width in pixels of mode 0x13
+#define MAX_X (SCREEN_WIDTH - 1)
+#define MID_X (SCREEN_WIDTH >> 1)
+
+#define SCREEN_HEIGHT 200 // height in pixels of mode 0x13
+#define MAX_Y (SCREEN_HEIGHT - 1)
+#define MID_Y (SCREEN_HEIGHT >> 1)
+
+#define SCREEN_SIZE (SCREEN_WIDTH * SCREEN_HEIGHT)
+
+#define INDEX_OF(x, y) ((y)*SCREEN_WIDTH + (x))
+
+#define NUM_COLORS 256 // number of colors in mode 0x13
+#define MAX_COLOR (NUM_COLORS - 1)
+#define MAX_COLOR_COMPONENT 63 // RGB components in the palette
 
 #define DIGIT_WIDTH 5
 #define DIGIT_HEIGHT 7
 #define DIGIT_SIZE (DIGIT_WIDTH * DIGIT_HEIGHT)
 #define DIGIT_SPACING 7
 
+#define MAX_PALETTE_RANGES 8
+
+#define MAX_WEIGHT 12
+#define DIM_AMOUNT 0.1
+
+// LUT sizes
+#define MAX_RAND_NUMS 1021
+// 1021 is prime so it should be hard to stumble upon cycles
+#define NUM_ANGLES 256
+
+// Gameplay
+#define START_SPEED 2.3
+
+#define COLLISION_THRESHOLD 15
+
+#define PADDLE_MARGIN_HIT 13
+#define HALF_PADDLE_HIT 18
+
+#define NEBULA_PARTICLES 25
+
+// UI
+#define SCORE_X 10
+#define SCORE_Y 10
+
+#define COUNTDOWN_X 154
+#define COUNTDOWN_Y 93
+#define COUNTDOWN_FRAMES 4
+
+#define PADDLE_MARGIN 10
+#define HALF_PADDLE 16
+
+template <typename T> inline T clamp(T val, T min, T max) {
+  return val < min ? min : val > max ? max : val;
+}
+
 // clang-format off
-const uint8_t digit_sprites[][DIGIT_HEIGHT][DIGIT_WIDTH] = {
+uint8_t const digit_sprites[10][DIGIT_HEIGHT][DIGIT_WIDTH] = {
   { 0, 255, 255, 255, 0,
     255, 0, 0, 0, 255,
     255, 0, 0, 0, 255,
@@ -135,22 +200,16 @@ const uint8_t digit_sprites[][DIGIT_HEIGHT][DIGIT_WIDTH] = {
     0, 255, 255, 255, 0 }
 };
 // clang-format on
-#define NUM_DIGITS (sizeof(digit_sprites) / DIGIT_SIZE)
-
-// 1021 is prime so it should be hard to stumble upon cycles
-#define MAX_RAND_NUMS 1021
 
 int rnd_tbl[MAX_RAND_NUMS];
 int next_rnd_index;
 
-#define NEBULA_PARTICLES 25
 struct Nebula {
   float x[NEBULA_PARTICLES];
   float y[NEBULA_PARTICLES];
   uint8_t omega[NEBULA_PARTICLES];
 };
 
-#define NUM_ANGLES 256
 double cosTable[NUM_ANGLES], sinTable[NUM_ANGLES];
 
 inline int get_rnd() {
@@ -167,53 +226,10 @@ void init_rnd() {
   }
 }
 
-#define VIDEO_INT 0x10          // the BIOS video interrupt.
-#define WRITE_DOT 0x0C          // BIOS func to plot a pixel.
-#define SET_MODE 0x00           // BIOS func to set the video mode.
-#define GET_MODE 0x0F           // BIOS func to get the video mode.
-#define VGA_256_COLOR_MODE 0x13 // use to set 256-color mode.
-
-#define MOUSE_INT 0x33
-#define MOUSE_STATUS 0x3
-#define LMB 1
-#define RMB 2
-#define QUIT (LMB + RMB)
-
-#define SCREEN_WIDTH 320 // width in pixels of mode 0x13
-#define MAX_X (SCREEN_WIDTH - 1)
-#define MID_X (SCREEN_WIDTH >> 1)
-
-#define SCREEN_HEIGHT 200 // height in pixels of mode 0x13
-#define MAX_Y (SCREEN_HEIGHT - 1)
-#define MID_Y (SCREEN_HEIGHT >> 1)
-
-#define SCREEN_SIZE (SCREEN_WIDTH * SCREEN_HEIGHT)
-
-#define NUM_COLORS 256 // number of colors in mode 0x13
-#define MAX_COLOR (NUM_COLORS - 1)
-#define MAX_COLOR_COMPONENT 63 // RGB components in the palette
-
-#define DISPLAY_ENABLE 0x01 // VGA input status bits
-#define INPUT_STATUS 0x03da
-#define VRETRACE 0x08
-
-#define PALETTE_MASK 0x03c6
-#define PALETTE_REGISTER_READ 0x03c7
-#define PALETTE_REGISTER_WRITE 0x03c8
-#define PALETTE_DATA 0x03c9
-
-#define TAU 6.2831853071795864
-
 unsigned short target_x[SCREEN_WIDTH];
 unsigned short target_y[SCREEN_HEIGHT];
 
-#define MAX_WEIGHT 12
-#define DIM_AMOUNT 0.1
 short weighted_averages[MAX_WEIGHT * MAX_COLOR];
-
-void draw_number(uint8_t *buffer, int x, int y, int number);
-
-#define MAX_PALETTE_RANGES 8
 
 struct PaletteColor {
   uint8_t r;
@@ -331,14 +347,9 @@ PaletteDef pal_table[] = {
 };
 // clang-format on
 
-#define NUM_PALETTES (sizeof(pal_table) / sizeof(PaletteDef))
+int const NUM_PALETTES = sizeof(pal_table) / sizeof(PaletteDef);
 
-uint8_t *vga = (uint8_t *)0xA0000000L; // location of video memory
-
-void set_pixel(uint8_t *buffer, int x, int y, uint8_t color);
-void show_buffer(uint8_t *&front_buffer, uint8_t *&back_buffer);
-void s_pal_entry(uint8_t index, uint8_t red, uint8_t green, uint8_t blue);
-void line(uint8_t *buffer, int x1, int y1, int x2, int y2, uint8_t color);
+uint8_t *const VGA = (uint8_t *)0xA0000000L; // location of video memory
 
 uint8_t get_mode() {
   REGS regs;
@@ -372,8 +383,6 @@ void get_mouse_state(MouseState &mouse) {
   mouse.buttons = regs.x.bx;
 }
 
-#define INDEX_OF(x, y) ((y)*SCREEN_WIDTH + (x))
-
 inline void set_pixel(uint8_t *buffer, int x, int y, uint8_t color) {
   buffer[INDEX_OF(x, y)] = color;
 }
@@ -395,7 +404,7 @@ inline void show_buffer(uint8_t *&front_buffer, uint8_t *&back_buffer) {
   while (!(inp(INPUT_STATUS) & VRETRACE))
     ;
 
-  std::memcpy(vga, front_buffer, SCREEN_SIZE);
+  std::memcpy(VGA, front_buffer, SCREEN_SIZE);
   std::swap(front_buffer, back_buffer);
 }
 
@@ -462,27 +471,6 @@ void line(uint8_t *buffer, int x1, int y1, int x2, int y2, uint8_t color) {
 
 ///--------------main stuff
 
-// TODO: convert defines to consts?
-
-#define COLLISION_THRESHOLD 15
-
-// Visual
-#define PADDLE_MARGIN 10
-#define HALF_PADDLE 16
-
-// Physical
-#define PADDLE_MARGIN_HIT 13
-#define HALF_PADDLE_HIT 18
-
-#define SCORE_X 10
-#define SCORE_Y 10
-
-#define COUNTDOWN_X 154
-#define COUNTDOWN_Y 93
-#define COUNTDOWN_FRAMES 4
-
-#define START_SPEED 2.3
-
 typedef void (*EffectFunc)(uint8_t *);
 
 void none(uint8_t *) {}
@@ -518,9 +506,9 @@ void lines(uint8_t *buffer) {
        static_cast<uint8_t>(get_rnd() % NUM_COLORS));
 }
 
-static const EffectFunc effects[] = {none, dots, lines, waves};
+EffectFunc const effects[] = {none, dots, lines, waves};
 
-#define NUM_EFFECTS (sizeof(effects) / sizeof(EffectFunc))
+int const NUM_EFFECTS = sizeof(effects) / sizeof(EffectFunc);
 
 inline EffectFunc choose_effect() { return effects[get_rnd() % NUM_EFFECTS]; }
 
@@ -536,16 +524,139 @@ struct GameData {
   Nebula nebula;
 };
 
+template <typename T> T clamp_color(T color) {
+  return color < 0                     ? 0
+         : color > MAX_COLOR_COMPONENT ? MAX_COLOR_COMPONENT
+                                       : color;
+}
+
+uint8_t assert_color(uint8_t color) {
+  assert(color <= MAX_COLOR_COMPONENT);
+  return color;
+}
+
+void set_palette(PaletteDef const &pal_data, bool &is_noisy) {
+  uint8_t elem_start, elem_end, red_end, green_end, blue_end;
+
+  float red_inc, green_inc, blue_inc, difference, working_red, working_green,
+      working_blue;
+
+  for (int i = 0; i <= pal_data.num_ranges; ++i) {
+    PaletteRange const &range = pal_data.ranges[i];
+    elem_start = range.first_index;
+    elem_end = range.last_index;
+    difference = std::abs(elem_end - elem_start);
+
+    // These are asserted rather than clamped because it indicates a problem
+    // with the data
+    working_red = assert_color(range.first_color.r);
+    working_green = assert_color(range.first_color.g);
+    working_blue = assert_color(range.first_color.b);
+    red_end = assert_color(range.last_color.r);
+    green_end = assert_color(range.last_color.g);
+    blue_end = assert_color(range.last_color.b);
+
+    red_inc = (red_end - working_red) / difference;
+    green_inc = (green_end - working_green) / difference;
+    blue_inc = (blue_end - working_blue) / difference;
+
+    for (int j = elem_start; j <= elem_end; j++) {
+      s_pal_entry(static_cast<uint8_t>(j), static_cast<uint8_t>(working_red),
+                  static_cast<uint8_t>(working_green),
+                  static_cast<uint8_t>(working_blue));
+
+      working_red = clamp_color(working_red + red_inc);
+      working_green = clamp_color(working_green + green_inc);
+      working_blue = clamp_color(working_blue + blue_inc);
+    }
+  }
+
+  is_noisy = pal_data.is_noisy;
+}
+
+void blur(uint8_t *front_buffer, uint8_t *back_buffer, bool is_noisy) {
+  /*   int rand_x=0, rand_y=0;
+  rand_x=rand()%4-2; rand_y=rand()%4-2; */
+  for (int y = 0; y < SCREEN_HEIGHT; y++) {
+    for (int x = 0; x < SCREEN_WIDTH; x++) {
+
+      int weighted_sum = 0;
+      int const index = target_y[y] + target_x[x];
+
+      // Center pixel gets 8x weight
+      weighted_sum += (back_buffer[index]) << 2;
+
+      // Top, bottom, left, right get 1x weight
+      weighted_sum += back_buffer[index + 1] << 1;
+      weighted_sum += back_buffer[index + SCREEN_WIDTH] << 1;
+
+      weighted_sum += back_buffer[index - 1] << 1;
+      weighted_sum += back_buffer[index - SCREEN_WIDTH] << 1;
+
+      int target_color = weighted_averages[weighted_sum];
+      if (is_noisy)
+        target_color = clamp(target_color + get_rnd() % 2 - 1, 0, MAX_COLOR);
+      set_pixel(front_buffer, x, y, static_cast<uint8_t>(target_color));
+    }
+  }
+}
+
+void init(uint8_t *&front_buffer, uint8_t *&back_buffer) {
+  // allocate mem for the front_buffer
+  if ((front_buffer = new uint8_t[SCREEN_SIZE]) == NULL) {
+    std::cout << "Not enough memory for front buffer.\n";
+    std::exit(1);
+  }
+
+  if ((back_buffer = new uint8_t[SCREEN_SIZE]) == NULL) {
+    std::cout << "Not enough memory for back buffer.\n";
+    std::exit(1);
+  }
+
+  std::memset(front_buffer, 0, SCREEN_SIZE);
+  std::memset(back_buffer, 0, SCREEN_SIZE);
+
+  set_mode(VGA_256_COLOR_MODE);
+
+  for (int i = 0; i < SCREEN_WIDTH; i++) {
+    short target = ((i - MID_X) / 1.03) + MID_X;
+    if (target < (MID_X - 1))
+      ++target;
+    target_x[i] = clamp<short>(target, 0, SCREEN_WIDTH);
+  }
+
+  for (int i = 0; i < SCREEN_HEIGHT; i++) {
+    short target = (((i - MID_Y) / 1.03) + MID_Y);
+    if (i < (MID_Y - 1))
+      ++target;
+    target_y[i] = SCREEN_WIDTH * clamp<short>(target, 0, SCREEN_HEIGHT);
+  }
+
+  for (int i = 0; i < (MAX_WEIGHT * MAX_COLOR); i++) {
+    // TODO: DIM_AMOUNT should be subtracted instead of divided maybe?
+    weighted_averages[i] = i / (MAX_WEIGHT + DIM_AMOUNT);
+  }
+
+  for (int i = 0; i < NUM_ANGLES; i++) {
+    double const radians = TAU * i / NUM_ANGLES;
+    cosTable[i] = std::cos(radians);
+    sinTable[i] = std::sin(radians);
+  }
+
+  std::srand(15);
+  init_rnd();
+}
+
 void init_game(GameData &g) {
   init_rnd();
   set_palette(pal_table[get_rnd() % NUM_PALETTES], g.is_noisy);
 
-  static const float diag_start = START_SPEED / std::sqrt(2.0);
+  static float const DIAG_START = START_SPEED / std::sqrt(2.0);
 
   g.ball_x = MID_X;
   g.ball_y = MID_Y;
-  g.ball_dx = (get_rnd() % 2) ? diag_start : -diag_start;
-  g.ball_dy = (get_rnd() % 2) ? diag_start : -diag_start;
+  g.ball_dx = (get_rnd() % 2) ? DIAG_START : -DIAG_START;
+  g.ball_dy = (get_rnd() % 2) ? DIAG_START : -DIAG_START;
   g.speed = START_SPEED;
   g.curr_effect = choose_effect();
   g.score = 0;
@@ -564,8 +675,8 @@ enum Direction {
 };
 
 void process_hit(GameData &g, float &front_delta, float &front_pos,
-                 const float temp_pos, float &side_delta, const float side_pos,
-                 const float mouse_pos, const Direction direction) {
+                 float const temp_pos, float &side_delta, float const side_pos,
+                 float const mouse_pos, Direction const direction) {
   // TODO: use the speed as an actual magnitude
   g.speed += .05;
   front_delta = g.speed * direction;
@@ -575,6 +686,33 @@ void process_hit(GameData &g, float &front_delta, float &front_pos,
   set_palette(pal_table[get_rnd() % NUM_PALETTES], g.is_noisy);
   g.curr_effect = choose_effect();
   g.score++;
+}
+
+inline void draw_digit(uint8_t *buffer, int x, int y, int digit) {
+  for (int y_loop = 0; y_loop < DIGIT_HEIGHT; y_loop++) {
+    std::memcpy(buffer + INDEX_OF(x, y + y_loop), digit_sprites[digit][y_loop],
+                DIGIT_WIDTH);
+  }
+}
+
+void draw_number(uint8_t *buffer, int x, int y, int number) {
+  if (number < 10) {
+    draw_digit(buffer, x, y, number);
+    return;
+  }
+
+  int divisor = 10000; // Max 16-bit power of 10
+  while (divisor > number) {
+    divisor /= 10;
+  }
+  int offset = 0;
+  do {
+    int digit = number / divisor;
+    draw_digit(buffer, x + offset, y, digit);
+    offset += DIGIT_SPACING;
+    number %= divisor;
+    divisor /= 10;
+  } while (divisor > 0);
 }
 
 int main() {
@@ -697,154 +835,4 @@ quit:
   set_mode(old_mode);
 
   return 0;
-}
-
-template <typename T> T clamp_color(T color) {
-  return color < 0                     ? 0
-         : color > MAX_COLOR_COMPONENT ? MAX_COLOR_COMPONENT
-                                       : color;
-}
-
-uint8_t assert_color(uint8_t color) {
-  assert(color <= MAX_COLOR_COMPONENT);
-  return color;
-}
-
-void set_palette(PaletteDef const &pal_data, bool &is_noisy) {
-  uint8_t elem_start, elem_end, red_end, green_end, blue_end;
-
-  float red_inc, green_inc, blue_inc, difference, working_red, working_green,
-      working_blue;
-
-  for (int i = 0; i <= pal_data.num_ranges; ++i) {
-    PaletteRange const &range = pal_data.ranges[i];
-    elem_start = range.first_index;
-    elem_end = range.last_index;
-    difference = std::abs(elem_end - elem_start);
-
-    // These are asserted rather than clamped because it indicates a problem
-    // with the data
-    working_red = assert_color(range.first_color.r);
-    working_green = assert_color(range.first_color.g);
-    working_blue = assert_color(range.first_color.b);
-    red_end = assert_color(range.last_color.r);
-    green_end = assert_color(range.last_color.g);
-    blue_end = assert_color(range.last_color.b);
-
-    red_inc = (red_end - working_red) / difference;
-    green_inc = (green_end - working_green) / difference;
-    blue_inc = (blue_end - working_blue) / difference;
-
-    for (int j = elem_start; j <= elem_end; j++) {
-      s_pal_entry(static_cast<uint8_t>(j), static_cast<uint8_t>(working_red),
-                  static_cast<uint8_t>(working_green),
-                  static_cast<uint8_t>(working_blue));
-
-      working_red = clamp_color(working_red + red_inc);
-      working_green = clamp_color(working_green + green_inc);
-      working_blue = clamp_color(working_blue + blue_inc);
-    }
-  }
-
-  is_noisy = pal_data.is_noisy;
-}
-
-void blur(uint8_t *front_buffer, uint8_t *back_buffer, bool is_noisy) {
-  /*   int rand_x=0, rand_y=0;
-  rand_x=rand()%4-2; rand_y=rand()%4-2; */
-  for (int y = 0; y < SCREEN_HEIGHT; y++) {
-    for (int x = 0; x < SCREEN_WIDTH; x++) {
-
-      int weighted_sum = 0;
-      const int index = target_y[y] + target_x[x];
-
-      // Center pixel gets 8x weight
-      weighted_sum += (back_buffer[index]) << 2;
-
-      // Top, bottom, left, right get 1x weight
-      weighted_sum += back_buffer[index + 1] << 1;
-      weighted_sum += back_buffer[index + SCREEN_WIDTH] << 1;
-
-      weighted_sum += back_buffer[index - 1] << 1;
-      weighted_sum += back_buffer[index - SCREEN_WIDTH] << 1;
-
-      int target_color = weighted_averages[weighted_sum];
-      if (is_noisy)
-        target_color = clamp(target_color + get_rnd() % 2 - 1, 0, MAX_COLOR);
-      set_pixel(front_buffer, x, y, static_cast<uint8_t>(target_color));
-    }
-  }
-}
-
-void init(uint8_t *&front_buffer, uint8_t *&back_buffer) {
-  // allocate mem for the front_buffer
-  if ((front_buffer = new uint8_t[SCREEN_SIZE]) == NULL) {
-    std::cout << "Not enough memory for front buffer.\n";
-    std::exit(1);
-  }
-
-  if ((back_buffer = new uint8_t[SCREEN_SIZE]) == NULL) {
-    std::cout << "Not enough memory for back buffer.\n";
-    std::exit(1);
-  }
-
-  std::memset(front_buffer, 0, SCREEN_SIZE);
-  std::memset(back_buffer, 0, SCREEN_SIZE);
-
-  set_mode(VGA_256_COLOR_MODE);
-
-  for (int i = 0; i < SCREEN_WIDTH; i++) {
-    short target = ((i - MID_X) / 1.03) + MID_X;
-    if (target < (MID_X - 1))
-      ++target;
-    target_x[i] = clamp<short>(target, 0, SCREEN_WIDTH);
-  }
-
-  for (int i = 0; i < SCREEN_HEIGHT; i++) {
-    short target = (((i - MID_Y) / 1.03) + MID_Y);
-    if (i < (MID_Y - 1))
-      ++target;
-    target_y[i] = SCREEN_WIDTH * clamp<short>(target, 0, SCREEN_HEIGHT);
-  }
-
-  for (int i = 0; i < (MAX_WEIGHT * MAX_COLOR); i++) {
-    // TODO: DIM_AMOUNT should be subtracted instead of divided maybe?
-    weighted_averages[i] = i / (MAX_WEIGHT + DIM_AMOUNT);
-  }
-
-  for (int i = 0; i < NUM_ANGLES; i++) {
-    const double radians = TAU * i / NUM_ANGLES;
-    cosTable[i] = std::cos(radians);
-    sinTable[i] = std::sin(radians);
-  }
-
-  std::srand(15);
-  init_rnd();
-}
-
-inline void draw_digit(uint8_t *buffer, int x, int y, int digit) {
-  for (int y_loop = 0; y_loop < DIGIT_HEIGHT; y_loop++) {
-    std::memcpy(buffer + INDEX_OF(x, y + y_loop), digit_sprites[digit][y_loop],
-                DIGIT_WIDTH);
-  }
-}
-
-void draw_number(uint8_t *buffer, int x, int y, int number) {
-  if (number < 10) {
-    draw_digit(buffer, x, y, number);
-    return;
-  }
-
-  int divisor = 10000; // Max 16-bit power of 10
-  while (divisor > number) {
-    divisor /= 10;
-  }
-  int offset = 0;
-  do {
-    int digit = number / divisor;
-    draw_digit(buffer, x + offset, y, digit);
-    offset += DIGIT_SPACING;
-    number %= divisor;
-    divisor /= 10;
-  } while (divisor > 0);
 }
