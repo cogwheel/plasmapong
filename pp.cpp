@@ -43,18 +43,6 @@ void blur(uint8_t *front_buffer, uint8_t *back_buffer, bool is_noisy);
 struct PaletteDef;
 void set_palette(PaletteDef const &pal_data, bool &is_noisy);
 
-typedef void (*EffectFunc)(uint8_t *);
-
-inline void none(uint8_t *) {}
-
-inline void waves(uint8_t *buffer);
-inline void dots(uint8_t *buffer);
-inline void lines(uint8_t *buffer);
-
-static const EffectFunc effects[] = {none, dots, lines, waves};
-
-#define NUM_EFFECTS (sizeof(effects) / sizeof(EffectFunc))
-
 template <typename T> inline T clamp(T val, T min, T max) {
   return val < min ? min : val > max ? max : val;
 }
@@ -495,6 +483,45 @@ void line(uint8_t *buffer, int x1, int y1, int x2, int y2, uint8_t color) {
 
 #define START_SPEED 2.3
 
+typedef void (*EffectFunc)(uint8_t *);
+
+void none(uint8_t *) {}
+
+void waves(uint8_t *buffer) {
+  int vertices[11];
+  for (int i = 0; i <= 10; i++) {
+    vertices[i] = get_rnd() % 60 + 60;
+  }
+  for (int i = 0; i < 10; i++) {
+    line(buffer, i * 32, vertices[i], i * 32 + 32, vertices[i + 1], 128);
+  }
+}
+
+void dots(uint8_t *buffer) {
+  for (int i = 0; i < 8; i++) {
+    int drop_x = get_rnd() % (SCREEN_WIDTH - 3),
+        drop_y = get_rnd() % (SCREEN_HEIGHT - 3);
+    // top-mid
+    set_pixel(buffer, drop_x + 1, drop_y, MAX_COLOR);
+
+    // middle row
+    set_pixels(buffer, drop_x, drop_y + 1, MAX_COLOR, 3);
+
+    // bottom mid
+    set_pixel(buffer, drop_x + 1, drop_y + 2, MAX_COLOR);
+  }
+}
+
+void lines(uint8_t *buffer) {
+  line(buffer, get_rnd() % SCREEN_WIDTH, get_rnd() % SCREEN_HEIGHT,
+       get_rnd() % SCREEN_WIDTH, get_rnd() % SCREEN_HEIGHT,
+       static_cast<uint8_t>(get_rnd() % NUM_COLORS));
+}
+
+static const EffectFunc effects[] = {none, dots, lines, waves};
+
+#define NUM_EFFECTS (sizeof(effects) / sizeof(EffectFunc))
+
 inline EffectFunc choose_effect() { return effects[get_rnd() % NUM_EFFECTS]; }
 
 struct GameData {
@@ -818,35 +845,4 @@ void draw_number(uint8_t *buffer, int x, int y, int number) {
     number %= divisor;
     divisor /= 10;
   } while (divisor > 0);
-}
-
-inline void waves(uint8_t *buffer) {
-  int vertices[11];
-  for (int i = 0; i <= 10; i++) {
-    vertices[i] = get_rnd() % 60 + 60;
-  }
-  for (int i = 0; i < 10; i++) {
-    line(buffer, i * 32, vertices[i], i * 32 + 32, vertices[i + 1], 128);
-  }
-}
-
-inline void dots(uint8_t *buffer) {
-  for (int i = 0; i < 8; i++) {
-    int drop_x = get_rnd() % (SCREEN_WIDTH - 3),
-        drop_y = get_rnd() % (SCREEN_HEIGHT - 3);
-    // top-mid
-    set_pixel(buffer, drop_x + 1, drop_y, MAX_COLOR);
-
-    // middle row
-    set_pixels(buffer, drop_x, drop_y + 1, MAX_COLOR, 3);
-
-    // bottom mid
-    set_pixel(buffer, drop_x + 1, drop_y + 2, MAX_COLOR);
-  }
-}
-
-inline void lines(uint8_t *buffer) {
-  line(buffer, get_rnd() % SCREEN_WIDTH, get_rnd() % SCREEN_HEIGHT,
-       get_rnd() % SCREEN_WIDTH, get_rnd() % SCREEN_HEIGHT,
-       static_cast<uint8_t>(get_rnd() % NUM_COLORS));
 }
