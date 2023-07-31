@@ -95,7 +95,8 @@ using std::uint8_t;
 #define NUM_ANGLES 256
 
 // Gameplay
-#define START_SPEED 2.3
+#define START_SPEED 1.8
+#define SIDE_SPEED_FACTOR (1.0 / 8)
 
 #define COLLISION_THRESHOLD 15
 
@@ -682,7 +683,7 @@ void process_hit(GameData &g, float &front_delta, float &front_pos,
   front_delta = g.speed * direction;
   // TODO: instead of reseting to previous pos, reflect across the paddle
   front_pos = temp_pos;
-  side_delta = (side_pos - mouse_pos) / 4;
+  side_delta = g.speed * (side_pos - mouse_pos) * SIDE_SPEED_FACTOR;
   set_palette(pal_table[get_rnd() % NUM_PALETTES], g.is_noisy);
   g.curr_effect = choose_effect();
   g.score++;
