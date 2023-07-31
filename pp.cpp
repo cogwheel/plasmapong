@@ -215,9 +215,14 @@ int rnd_tbl[MAX_RAND_NUMS];
 int next_rnd_index;
 
 struct Nebula {
-  float x[NEBULA_PARTICLES];
-  float y[NEBULA_PARTICLES];
-  uint8_t omega[NEBULA_PARTICLES];
+  // distance from center of ball
+  float r[NEBULA_PARTICLES];
+
+  // starting angle
+  uint8_t phase[NEBULA_PARTICLES];
+
+  // change of angle each frame
+  uint8_t sweep[NEBULA_PARTICLES];
 };
 
 double cosTable[NUM_ANGLES], sinTable[NUM_ANGLES];
@@ -524,18 +529,6 @@ int const NUM_EFFECTS = sizeof(effects) / sizeof(EffectFunc);
 
 inline EffectFunc choose_effect() { return effects[get_rnd() % NUM_EFFECTS]; }
 
-struct GameData {
-  float ball_x, ball_y, ball_dx, ball_dy;
-  float speed;
-
-  EffectFunc curr_effect;
-  int score;
-
-  bool is_noisy;
-
-  Nebula nebula;
-};
-
 template <typename T> T clamp_color(T color) {
   return color < 0                     ? 0
          : color > MAX_COLOR_COMPONENT ? MAX_COLOR_COMPONENT
@@ -657,6 +650,18 @@ void init(uint8_t *&front_buffer, uint8_t *&back_buffer) {
   init_rnd();
 }
 
+struct GameData {
+  float ball_x, ball_y, ball_dx, ball_dy;
+  float speed;
+
+  EffectFunc curr_effect;
+  int score;
+
+  bool is_noisy;
+
+  Nebula nebula;
+};
+
 void init_game(GameData &g) {
   init_rnd();
   set_palette(pal_table[get_rnd() % NUM_PALETTES], g.is_noisy);
@@ -672,10 +677,10 @@ void init_game(GameData &g) {
   g.score = 0;
 
   for (int i = 0; i < NEBULA_PARTICLES; i++) {
-    g.nebula.x[i] = get_rnd() % 3 - 5;
-    g.nebula.y[i] = get_rnd() % 3 - 5;
+    g.nebula.r[i] = get_rnd() % 4 + 5;
+    g.nebula.phase[i] = static_cast<uint8_t>(get_rnd() % NUM_ANGLES);
     // Take advantage of uint underflow to create complementary angles
-    g.nebula.omega[i] = static_cast<uint8_t>(get_rnd() % 30 - 15);
+    g.nebula.sweep[i] = static_cast<uint8_t>(get_rnd() % 30 - 15);
   }
 }
 
@@ -826,16 +831,12 @@ int main() {
     }
 
     for (int i = 0; i < NEBULA_PARTICLES; i++) {
+      g.nebula.phase[i] += g.nebula.sweep[i];
 
-      float orig_x = g.nebula.x[i];
+      int x = g.nebula.r[i] * cosTable[g.nebula.phase[i]];
+      int y = g.nebula.r[i] * sinTable[g.nebula.phase[i]];
 
-      g.nebula.x[i] = g.nebula.x[i] * cosTable[g.nebula.omega[i]] -
-                      g.nebula.y[i] * sinTable[g.nebula.omega[i]];
-      g.nebula.y[i] = g.nebula.y[i] * cosTable[g.nebula.omega[i]] +
-                      orig_x * sinTable[g.nebula.omega[i]];
-
-      set_pixel(front_buffer, g.nebula.x[i] + g.ball_x,
-                g.nebula.y[i] + g.ball_y, MAX_COLOR);
+      set_pixel(front_buffer, g.ball_x + x, g.ball_y + y, MAX_COLOR);
     }
 
     show_buffer(front_buffer, back_buffer);
