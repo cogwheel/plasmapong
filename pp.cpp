@@ -502,6 +502,25 @@ void init_game() {
   score = 0;
 }
 
+enum Direction {
+  kForward = 1,
+  kReverse = -1,
+};
+
+void process_hit(float &front_delta, float &front_pos, const float temp_pos,
+                 float &side_delta, const float side_pos, const float mouse_pos,
+                 const Direction direction) {
+  // TODO: use the speed as an actual magnitude
+  speed += .05;
+  front_delta = speed * direction;
+  // TODO: instead of reseting to previous pos, reflect across the paddle
+  front_pos = temp_pos;
+  side_delta = (side_pos - mouse_pos) / 4;
+  make_palette(pal_table[get_rnd() % NUM_PALETTES]);
+  curr_effect = choose_effect();
+  score++;
+}
+
 int main() {
   uint8_t old_mode = get_mode();
 
@@ -562,43 +581,27 @@ int main() {
       }
       if (ball_y > (mouse.y - HALF_PADDLE_HIT) &&
           ball_y < (mouse.y + HALF_PADDLE_HIT) && ball_x < PADDLE_MARGIN_HIT) {
-        speed += .05;
-        ball_x_delta = speed;
-        ball_x = x_temp;
-        ball_y_delta = (ball_y - mouse.y) / 4;
-        make_palette(pal_table[get_rnd() % NUM_PALETTES]);
-        curr_effect = choose_effect();
-        score++;
+        // Left paddle hit
+        process_hit(ball_x_delta, ball_x, x_temp, ball_y_delta, ball_y, mouse.y,
+                    kForward);
       } else if (ball_y < (MAX_Y - (mouse.y - HALF_PADDLE_HIT)) &&
                  ball_y > (MAX_Y - (mouse.y + HALF_PADDLE_HIT)) &&
                  ball_x > (SCREEN_WIDTH - PADDLE_MARGIN_HIT)) {
-        speed += .05;
-        ball_x_delta = -1 * speed;
-        ball_x = x_temp;
-        ball_y_delta = (ball_y - (MAX_Y - mouse.y)) / 4;
-        make_palette(pal_table[get_rnd() % NUM_PALETTES]);
-        curr_effect = choose_effect();
-        score++;
+        // Right paddle hit
+        process_hit(ball_x_delta, ball_x, x_temp, ball_y_delta, ball_y,
+                    MAX_Y - mouse.y, kReverse);
       } else if (ball_x < (MAX_X - (mouse.x - HALF_PADDLE_HIT)) &&
                  ball_x > (MAX_X - (mouse.x + HALF_PADDLE_HIT)) &&
                  ball_y < PADDLE_MARGIN_HIT) {
-        speed += .05;
-        ball_y_delta = speed;
-        ball_y = y_temp;
-        ball_x_delta = (ball_x - (MAX_X - mouse.x)) / 4;
-        make_palette(pal_table[get_rnd() % NUM_PALETTES]);
-        score++;
-        curr_effect = choose_effect();
+        // top paddle hit
+        process_hit(ball_y_delta, ball_y, y_temp, ball_x_delta, ball_x,
+                    MAX_X - mouse.x, kForward);
       } else if (ball_x > (mouse.x - HALF_PADDLE_HIT) &&
                  ball_x < (mouse.x + HALF_PADDLE_HIT) &&
                  ball_y >= (SCREEN_HEIGHT - PADDLE_MARGIN_HIT)) {
-        speed += .05;
-        ball_y_delta = -1 * speed;
-        ball_y = y_temp;
-        ball_x_delta = (ball_x - mouse.x) / 4;
-        make_palette(pal_table[get_rnd() % NUM_PALETTES]);
-        score++;
-        curr_effect = choose_effect();
+        // bottom paddle hit
+        process_hit(ball_y_delta, ball_y, y_temp, ball_x_delta, ball_x, mouse.x,
+                    kReverse);
       }
     }
 
