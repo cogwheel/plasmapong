@@ -7,6 +7,11 @@ My attempt to clean up an ancient DOS game a friend and I made in high school.
 - Rename, rearrange, reformat, and refactor things to be more sane, but still one file
     - [ ] Magic numbers -> constants
     - [ ] Deduplicate code
+    - [ ] Globals -> state object
+    - [ ] Rearrange code to eliminate prototypes
+    - [ ] Consolidate constants
+    - [ ] Defines -> static consts?
+- [ ] Test performance on (simulated) pentium 233 to make sure it still runs well (it's probably fine since I eliminated an entire screen copy)
 - [X] Get it running under FreeDOS with OpenWatcom compiler
 - Fix game-breaking problems
     - [X] Score display
