@@ -22,7 +22,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 */
 
-#include <algorithm>
+#include <algorith>
 #include <cassert>
 #include <cfloat>
 #include <cmath>
@@ -124,7 +124,7 @@ using std::uint8_t;
 #define MOUSE_Y_SCALE (float(MOUSE_Y_RANGE) / (SCREEN_HEIGHT))
 
 template <typename T> inline T clamp(T val, T min, T max) {
-  return val < min ? min : val > max ? max : val;
+  return std::min(max, std::max(min, val));
 }
 
 // clang-format off
@@ -404,6 +404,13 @@ inline void set_pixel(uint8_t *buffer, int x, int y, uint8_t color) {
   buffer[INDEX_OF(x, y)] = color;
 }
 
+inline void set_pixel_clipped(uint8_t *buffer, int x, int y, uint8_t color) {
+  if (x < 0 || x > MAX_X || y < 0 || y > MAX_Y)
+    return;
+
+  set_pixel(buffer, x, y, color);
+}
+
 inline void set_pixels(uint8_t *buffer, int x, int y, uint8_t color, int size) {
   if (size == 0)
     return;
@@ -415,14 +422,21 @@ inline void set_pixels(uint8_t *buffer, int x, int y, uint8_t color, int size) {
   std::memset(buffer + INDEX_OF(x, y), color, size);
 }
 
-inline void show_buffer(uint8_t *&front_buffer, uint8_t *&back_buffer) {
+inline void set_pixels_clipped(uint8_t *buffer, int x, int y, uint8_t color,
+                               int size) {
+  x = clamp(x, 0, MAX_X);
+  y = clamp(y, 0, MAX_Y);
+
+  set_pixels(buffer, x, y, color, size);
+}
+
+inline void show_buffer(uint8_t *&front_buffer) {
   while ((inp(INPUT_STATUS) & VRETRACE))
     ;
   while (!(inp(INPUT_STATUS) & VRETRACE))
     ;
 
   std::memcpy(VGA, front_buffer, SCREEN_SIZE);
-  std::swap(front_buffer, back_buffer);
 }
 
 inline void s_pal_entry(uint8_t index, uint8_t red, uint8_t green,
@@ -440,7 +454,7 @@ void line(uint8_t *buffer, int x1, int y1, int x2, int y2, uint8_t color) {
   if (y1 == y2) {
     if (x2 < x1)
       std::swap(x1, x2);
-    set_pixels(buffer, x1, y1, color, x2 - x1 + 1);
+    set_pixels_clipped(buffer, x1, y1, color, x2 - x1 + 1);
     return;
   }
 
@@ -464,7 +478,7 @@ void line(uint8_t *buffer, int x1, int y1, int x2, int y2, uint8_t color) {
   if (dx > dy) {
     error = 0;
     for (i = 0; i < dx; i++) {
-      set_pixel(buffer, x, y, color);
+      set_pixel_clipped(buffer, x, y, color);
       x += xinc;
       error += two_dy;
       if (error > dx) {
@@ -475,7 +489,7 @@ void line(uint8_t *buffer, int x1, int y1, int x2, int y2, uint8_t color) {
   } else {
     error = 0;
     for (i = 0; i < dy; i++) {
-      set_pixel(buffer, x, y, color);
+      set_pixel_clipped(buffer, x, y, color);
       y += yinc;
       error += two_dx;
       if (error > dy) {
@@ -530,9 +544,8 @@ int const NUM_EFFECTS = sizeof(effects) / sizeof(EffectFunc);
 inline EffectFunc choose_effect() { return effects[get_rnd() % NUM_EFFECTS]; }
 
 template <typename T> T clamp_color(T color) {
-  return color < 0                     ? 0
-         : color > MAX_COLOR_COMPONENT ? MAX_COLOR_COMPONENT
-                                       : color;
+  return color < 0 ? 0
+                   : color > MAX_COLOR_COMPONENT ? MAX_COLOR_COMPONENT : color;
 }
 
 uint8_t assert_color(uint8_t color) {
@@ -656,13 +669,14 @@ struct GameData {
 
   EffectFunc curr_effect;
   int score;
+  int countdown;
 
   bool is_noisy;
 
   Nebula nebula;
 };
 
-void init_game(GameData &g) {
+void enter_play(GameData &g, MouseState const &) {
   init_rnd();
   set_palette(pal_table[get_rnd() % NUM_PALETTES], g.is_noisy);
 
@@ -730,6 +744,160 @@ void draw_number(uint8_t *buffer, int x, int y, int number) {
   } while (divisor > 0);
 }
 
+enum State {
+  kPlaying = 0,
+  kLosing,
+  kLost,
+  kNumStates,
+};
+
+typedef void (*EnterFn)(GameData &g, MouseState const &mouse);
+typedef State (*UpdateFn)(GameData &g, MouseState const &mouse);
+typedef void (*RenderFn)(uint8_t *buffer, GameData const &g,
+                         MouseState const &mouse);
+
+struct StateEntry {
+  EnterFn enter;
+  UpdateFn update;
+  RenderFn render;
+};
+
+inline void apply_deltas(GameData &g) {
+  g.ball_x += g.ball_dx;
+  g.ball_y += g.ball_dy;
+
+  for (int i = 0; i < NEBULA_PARTICLES; i++) {
+    g.nebula.phase[i] += g.nebula.sweep[i];
+  }
+}
+
+State update_play(GameData &g, MouseState const &mouse) {
+  float prev_x = g.ball_x;
+  float prev_y = g.ball_y;
+
+  apply_deltas(g);
+
+  bool is_out = false;
+
+  if (g.ball_x >= (SCREEN_WIDTH - PADDLE_MARGIN_HIT) ||
+      g.ball_x < PADDLE_MARGIN_HIT ||
+      g.ball_y >= (SCREEN_HEIGHT - PADDLE_MARGIN_HIT) ||
+      g.ball_y < PADDLE_MARGIN_HIT) {
+
+    is_out = true;
+
+    if (g.ball_x < PADDLE_MARGIN_HIT &&
+        g.ball_y > (mouse.y - HALF_PADDLE_HIT) &&
+        g.ball_y < (mouse.y + HALF_PADDLE_HIT)) {
+      // Left paddle hit
+      process_hit(g, g.ball_dx, g.ball_x, prev_x, g.ball_dy, g.ball_y, mouse.y,
+                  kForward);
+      is_out = false;
+    } else if (g.ball_x > (SCREEN_WIDTH - PADDLE_MARGIN_HIT) &&
+               g.ball_y < (MAX_Y - (mouse.y - HALF_PADDLE_HIT)) &&
+               g.ball_y > (MAX_Y - (mouse.y + HALF_PADDLE_HIT))) {
+      // Right paddle hit
+      process_hit(g, g.ball_dx, g.ball_x, prev_x, g.ball_dy, g.ball_y,
+                  MAX_Y - mouse.y, kReverse);
+      is_out = false;
+    } else if (g.ball_y < PADDLE_MARGIN_HIT &&
+               g.ball_x < (MAX_X - (mouse.x - HALF_PADDLE_HIT)) &&
+               g.ball_x > (MAX_X - (mouse.x + HALF_PADDLE_HIT))) {
+      // top paddle hit
+      process_hit(g, g.ball_dy, g.ball_y, prev_y, g.ball_dx, g.ball_x,
+                  MAX_X - mouse.x, kForward);
+      is_out = false;
+    } else if (g.ball_y > (SCREEN_HEIGHT - PADDLE_MARGIN_HIT) &&
+               g.ball_x > (mouse.x - HALF_PADDLE_HIT) &&
+               g.ball_x < (mouse.x + HALF_PADDLE_HIT)) {
+      // bottom paddle hit
+      process_hit(g, g.ball_dy, g.ball_y, prev_y, g.ball_dx, g.ball_x, mouse.x,
+                  kReverse);
+      is_out = false;
+    }
+  }
+
+  return is_out ? kLosing : kPlaying;
+}
+
+void render_play(uint8_t *buffer, GameData const &g, MouseState const &mouse) {
+  g.curr_effect(buffer);
+
+  draw_number(buffer, SCORE_X, SCORE_Y, g.score);
+
+  // draw paddles
+
+  // TOP
+  line(buffer, MAX_X - (mouse.x - HALF_PADDLE), PADDLE_MARGIN,
+       MAX_X - (mouse.x + HALF_PADDLE), PADDLE_MARGIN, MAX_COLOR);
+  // BOTTOM
+  line(buffer, mouse.x - HALF_PADDLE, SCREEN_HEIGHT - PADDLE_MARGIN,
+       mouse.x + HALF_PADDLE, SCREEN_HEIGHT - PADDLE_MARGIN, MAX_COLOR);
+  // LEFT
+  line(buffer, PADDLE_MARGIN, mouse.y - HALF_PADDLE, PADDLE_MARGIN,
+       mouse.y + HALF_PADDLE, MAX_COLOR);
+  // RIGHT
+  line(buffer, SCREEN_WIDTH - PADDLE_MARGIN, MAX_Y - (mouse.y - HALF_PADDLE),
+       SCREEN_WIDTH - PADDLE_MARGIN, MAX_Y - (mouse.y + HALF_PADDLE),
+       MAX_COLOR);
+
+  // Draw "nucleus"
+  for (int i = 0; i < 5; i++) {
+    line(buffer, (int)g.ball_x + get_rnd() % 6 - 3,
+         (int)g.ball_y + get_rnd() % 6 - 3, (int)g.ball_x + get_rnd() % 6 - 3,
+         (int)g.ball_y + get_rnd() % 6 - 3, 230);
+  }
+
+  // Draw nebula
+  for (int i = 0; i < NEBULA_PARTICLES; i++) {
+    int x = g.ball_x + g.nebula.r[i] * cosTable[g.nebula.phase[i]];
+    int y = g.ball_y + g.nebula.r[i] * sinTable[g.nebula.phase[i]];
+
+    if (x >= 0 && x <= MAX_X && y >= 0 && y <= MAX_Y) {
+      set_pixel(buffer, x, y, MAX_COLOR);
+    }
+  }
+}
+
+State update_losing(GameData &g, MouseState const &) {
+  apply_deltas(g);
+
+  if (g.ball_x < 18 || g.ball_x > (MAX_X + 18) || g.ball_y < 18 ||
+      g.ball_y > (MAX_Y + 18)) {
+    return kLost;
+  }
+
+  return kLosing;
+}
+
+void enter_lost(GameData &g, MouseState const &) {
+  g.countdown = COUNTDOWN_FRAMES;
+}
+
+State update_lost(GameData &g, MouseState const &) {
+  g.countdown--;
+  if (g.countdown == 0) {
+    g.score--;
+    g.countdown = COUNTDOWN_FRAMES;
+  }
+
+  if (g.score < 0) {
+    return kPlaying;
+  }
+
+  return kLost;
+}
+
+void render_lost(uint8_t *buffer, GameData const &g, MouseState const &) {
+  draw_number(buffer, COUNTDOWN_X, COUNTDOWN_Y, g.score);
+}
+
+static const StateEntry state_table[kNumStates] = {
+    {enter_play, update_play, render_play}, // kPlaying
+    {NULL, update_losing, render_play},     // kLosing
+    {enter_lost, update_lost, render_lost}, // kLost
+};
+
 int main() {
   uint8_t old_mode = get_mode();
 
@@ -742,107 +910,30 @@ int main() {
   }
 
   GameData g;
-  init_game(g);
+  MouseState mouse; // TODO: general input state?
 
-  MouseState mouse;
+  State state = kPlaying;
+  enter_play(g, mouse);
+
   for (get_mouse_state(mouse); mouse.buttons != QUIT; get_mouse_state(mouse)) {
-    float prev_x = g.ball_x;
-    float prev_y = g.ball_y;
+    State new_state = state_table[state].update(g, mouse);
 
-    g.ball_x += g.ball_dx;
-    g.ball_y += g.ball_dy;
+    if (new_state != state) {
+      state = new_state;
 
-    // TODO: De-nest these ifs (outer one seems redundant; might be
-    // optimization)
-    if (g.ball_x > (SCREEN_WIDTH - COLLISION_THRESHOLD) ||
-        g.ball_x < COLLISION_THRESHOLD ||
-        g.ball_y > (SCREEN_HEIGHT - COLLISION_THRESHOLD) ||
-        g.ball_y < COLLISION_THRESHOLD) {
-      if (g.ball_x >= SCREEN_WIDTH || g.ball_x < 0 ||
-          g.ball_y >= SCREEN_HEIGHT || g.ball_y < 0) {
-        for (; g.score > 0; g.score--) {
-          for (int frame = 0; frame < COUNTDOWN_FRAMES; ++frame) {
-            blur(front_buffer, back_buffer, g.is_noisy);
-            draw_number(front_buffer, COUNTDOWN_X, COUNTDOWN_Y, g.score);
-            show_buffer(front_buffer, back_buffer);
-
-            // TODO: Use a state machine so this is handled by the outer loop
-            get_mouse_state(mouse);
-            if (mouse.buttons == QUIT)
-              goto quit;
-          }
-        }
-        init_game(g);
-      }
-      if (g.ball_y > (mouse.y - HALF_PADDLE_HIT) &&
-          g.ball_y < (mouse.y + HALF_PADDLE_HIT) &&
-          g.ball_x < PADDLE_MARGIN_HIT) {
-        // Left paddle hit
-        process_hit(g, g.ball_dx, g.ball_x, prev_x, g.ball_dy, g.ball_y,
-                    mouse.y, kForward);
-      } else if (g.ball_y < (MAX_Y - (mouse.y - HALF_PADDLE_HIT)) &&
-                 g.ball_y > (MAX_Y - (mouse.y + HALF_PADDLE_HIT)) &&
-                 g.ball_x > (SCREEN_WIDTH - PADDLE_MARGIN_HIT)) {
-        // Right paddle hit
-        process_hit(g, g.ball_dx, g.ball_x, prev_x, g.ball_dy, g.ball_y,
-                    MAX_Y - mouse.y, kReverse);
-      } else if (g.ball_x < (MAX_X - (mouse.x - HALF_PADDLE_HIT)) &&
-                 g.ball_x > (MAX_X - (mouse.x + HALF_PADDLE_HIT)) &&
-                 g.ball_y < PADDLE_MARGIN_HIT) {
-        // top paddle hit
-        process_hit(g, g.ball_dy, g.ball_y, prev_y, g.ball_dx, g.ball_x,
-                    MAX_X - mouse.x, kForward);
-      } else if (g.ball_x > (mouse.x - HALF_PADDLE_HIT) &&
-                 g.ball_x < (mouse.x + HALF_PADDLE_HIT) &&
-                 g.ball_y >= (SCREEN_HEIGHT - PADDLE_MARGIN_HIT)) {
-        // bottom paddle hit
-        process_hit(g, g.ball_dy, g.ball_y, prev_y, g.ball_dx, g.ball_x,
-                    mouse.x, kReverse);
+      if (state_table[state].enter) {
+        state_table[state].enter(g, mouse);
       }
     }
 
     blur(front_buffer, back_buffer, g.is_noisy);
 
-    g.curr_effect(front_buffer);
+    state_table[state].render(front_buffer, g, mouse);
 
-    draw_number(front_buffer, SCORE_X, SCORE_Y, g.score);
-
-    // draw paddles
-
-    // TOP
-    line(front_buffer, MAX_X - (mouse.x - HALF_PADDLE), PADDLE_MARGIN,
-         MAX_X - (mouse.x + HALF_PADDLE), PADDLE_MARGIN, MAX_COLOR);
-    // BOTTOM
-    line(front_buffer, mouse.x - HALF_PADDLE, SCREEN_HEIGHT - PADDLE_MARGIN,
-         mouse.x + HALF_PADDLE, SCREEN_HEIGHT - PADDLE_MARGIN, MAX_COLOR);
-    // LEFT
-    line(front_buffer, PADDLE_MARGIN, mouse.y - HALF_PADDLE, PADDLE_MARGIN,
-         mouse.y + HALF_PADDLE, MAX_COLOR);
-    // RIGHT
-    line(front_buffer, SCREEN_WIDTH - PADDLE_MARGIN,
-         MAX_Y - (mouse.y - HALF_PADDLE), SCREEN_WIDTH - PADDLE_MARGIN,
-         MAX_Y - (mouse.y + HALF_PADDLE), MAX_COLOR);
-
-    // Draw "nucleus" (i think?)
-    for (int i = 0; i < 5; i++) {
-      line(front_buffer, (int)g.ball_x + get_rnd() % 6 - 3,
-           (int)g.ball_y + get_rnd() % 6 - 3, (int)g.ball_x + get_rnd() % 6 - 3,
-           (int)g.ball_y + get_rnd() % 6 - 3, 230);
-    }
-
-    for (int i = 0; i < NEBULA_PARTICLES; i++) {
-      g.nebula.phase[i] += g.nebula.sweep[i];
-
-      int x = g.nebula.r[i] * cosTable[g.nebula.phase[i]];
-      int y = g.nebula.r[i] * sinTable[g.nebula.phase[i]];
-
-      set_pixel(front_buffer, g.ball_x + x, g.ball_y + y, MAX_COLOR);
-    }
-
-    show_buffer(front_buffer, back_buffer);
+    show_buffer(front_buffer);
+    std::swap(front_buffer, back_buffer);
   }
 
-quit:
   set_mode(old_mode);
 
   return 0;
