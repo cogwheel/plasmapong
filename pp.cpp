@@ -872,7 +872,7 @@ void render_play(uint8_t *buffer, GameData const &g, MouseState const &mouse) {
 State update_losing(GameData &g, MouseState const &) {
   apply_deltas(g);
 
-  if (g.ball_x < 18 || g.ball_x > (MAX_X + 18) || g.ball_y < 18 ||
+  if (g.ball_x < -18 || g.ball_x > (MAX_X + 18) || g.ball_y < -18 ||
       g.ball_y > (MAX_Y + 18)) {
     return kLost;
   }
