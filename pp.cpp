@@ -714,13 +714,12 @@ enum Direction {
 };
 
 void process_hit(GameData &g, float &front_delta, float &front_pos,
-                 float const temp_pos, float &side_delta, float const side_pos,
+                 int paddle_pos, float &side_delta, float const side_pos,
                  float const mouse_pos, Direction const direction) {
   // TODO: use the speed as an actual magnitude
   g.speed += .05;
   front_delta = g.speed * direction;
-  // TODO: instead of reseting to previous pos, reflect across the paddle
-  front_pos = temp_pos;
+  front_pos = paddle_pos + (paddle_pos - front_pos);
   side_delta = g.speed * (side_pos - mouse_pos) * SIDE_SPEED_FACTOR;
   set_palette(pal_table[get_rnd() % NUM_PALETTES], g.is_noisy);
   g.curr_effect = choose_effect();
@@ -782,9 +781,6 @@ inline void apply_deltas(GameData &g) {
 }
 
 State update_play(GameData &g, MouseState const &mouse) {
-  float prev_x = g.ball_x;
-  float prev_y = g.ball_y;
-
   apply_deltas(g);
 
   bool is_out = false;
@@ -800,29 +796,29 @@ State update_play(GameData &g, MouseState const &mouse) {
         g.ball_y > (mouse.y - HALF_PADDLE_HIT) &&
         g.ball_y < (mouse.y + HALF_PADDLE_HIT)) {
       // Left paddle hit
-      process_hit(g, g.ball_dx, g.ball_x, prev_x, g.ball_dy, g.ball_y, mouse.y,
-                  kForward);
+      process_hit(g, g.ball_dx, g.ball_x, PADDLE_MARGIN_HIT, g.ball_dy,
+                  g.ball_y, mouse.y, kForward);
       is_out = false;
     } else if (g.ball_x > (SCREEN_WIDTH - PADDLE_MARGIN_HIT) &&
                g.ball_y < (MAX_Y - (mouse.y - HALF_PADDLE_HIT)) &&
                g.ball_y > (MAX_Y - (mouse.y + HALF_PADDLE_HIT))) {
       // Right paddle hit
-      process_hit(g, g.ball_dx, g.ball_x, prev_x, g.ball_dy, g.ball_y,
-                  MAX_Y - mouse.y, kReverse);
+      process_hit(g, g.ball_dx, g.ball_x, SCREEN_WIDTH - PADDLE_MARGIN_HIT,
+                  g.ball_dy, g.ball_y, MAX_Y - mouse.y, kReverse);
       is_out = false;
     } else if (g.ball_y < PADDLE_MARGIN_HIT &&
                g.ball_x < (MAX_X - (mouse.x - HALF_PADDLE_HIT)) &&
                g.ball_x > (MAX_X - (mouse.x + HALF_PADDLE_HIT))) {
       // top paddle hit
-      process_hit(g, g.ball_dy, g.ball_y, prev_y, g.ball_dx, g.ball_x,
-                  MAX_X - mouse.x, kForward);
+      process_hit(g, g.ball_dy, g.ball_y, PADDLE_MARGIN_HIT, g.ball_dx,
+                  g.ball_x, MAX_X - mouse.x, kForward);
       is_out = false;
     } else if (g.ball_y > (SCREEN_HEIGHT - PADDLE_MARGIN_HIT) &&
                g.ball_x > (mouse.x - HALF_PADDLE_HIT) &&
                g.ball_x < (mouse.x + HALF_PADDLE_HIT)) {
       // bottom paddle hit
-      process_hit(g, g.ball_dy, g.ball_y, prev_y, g.ball_dx, g.ball_x, mouse.x,
-                  kReverse);
+      process_hit(g, g.ball_dy, g.ball_y, SCREEN_HEIGHT - PADDLE_MARGIN_HIT,
+                  g.ball_dx, g.ball_x, mouse.x, kReverse);
       is_out = false;
     }
   }
