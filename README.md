@@ -5,12 +5,12 @@ My attempt to clean up an ancient DOS game a friend and I made in high school.
 ## Goals
 
 - Rename, rearrange, reformat, and refactor things to be more sane, but still one file
-    - [ ] Magic numbers -> constants
-    - [ ] Deduplicate code
+    - [X] Magic numbers -> constants
+    - [X] Deduplicate code
     - [X] Globals -> state object
     - [X] Rearrange code to eliminate prototypes
     - [X] Consolidate constants
-    - [ ] Defines -> static consts?
+    - [ ] Defines -> static consts? (not sure if watcom can elide them)
 - [ ] Test performance on (simulated) pentium 233 to make sure it still runs well (it's probably fine since I eliminated an entire screen copy)
 - [X] Get it running under FreeDOS with OpenWatcom compiler
 - Fix game-breaking problems

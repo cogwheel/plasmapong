@@ -381,6 +381,14 @@ void set_mode(uint8_t mode) {
   int86(VIDEO_INT, &regs, &regs);
 }
 
+#define assert_minmax(x, min, max)                                             \
+  assert((x) >= (min));                                                        \
+  assert((x) <= (max))
+
+#define assert_onscreen(x, y)                                                  \
+  assert_minmax((x), 0, MAX_X);                                                \
+  assert_minmax((y), 0, MAX_Y)
+
 struct MouseState {
   int x, y, buttons;
 };
@@ -397,10 +405,14 @@ void get_mouse_state(MouseState &mouse) {
   mouse.x = raw_x * MOUSE_X_SCALE + MOUSE_MARGIN;
   mouse.y = raw_y * MOUSE_Y_SCALE + MOUSE_MARGIN;
 
+  assert_onscreen(mouse.x, mouse.y);
+
   mouse.buttons = regs.x.bx;
 }
 
 inline void set_pixel(uint8_t *buffer, int x, int y, uint8_t color) {
+  assert_onscreen(x, y);
+
   buffer[INDEX_OF(x, y)] = color;
 }
 
@@ -414,6 +426,10 @@ inline void set_pixel_clipped(uint8_t *buffer, int x, int y, uint8_t color) {
 inline void set_pixels(uint8_t *buffer, int x, int y, uint8_t color, int size) {
   if (size == 0)
     return;
+
+  assert_onscreen(x, y);
+  assert_minmax(x + size - 1, 0, MAX_X);
+
   if (size == 1) {
     set_pixel(buffer, x, y, color);
     return;
@@ -426,6 +442,7 @@ inline void set_pixels_clipped(uint8_t *buffer, int x, int y, uint8_t color,
                                int size) {
   x = clamp(x, 0, MAX_X);
   y = clamp(y, 0, MAX_Y);
+  size = clamp(size, 0, MAX_X - x);
 
   set_pixels(buffer, x, y, color, size);
 }
@@ -537,20 +554,14 @@ void lines(uint8_t *buffer) {
        static_cast<uint8_t>(get_rnd() % NUM_COLORS));
 }
 
-EffectFunc const effects[] = {none, dots, lines, waves};
+static EffectFunc const effects[] = {none, dots, lines, waves};
 
-int const NUM_EFFECTS = sizeof(effects) / sizeof(EffectFunc);
+static int const NUM_EFFECTS = sizeof(effects) / sizeof(EffectFunc);
 
 inline EffectFunc choose_effect() { return effects[get_rnd() % NUM_EFFECTS]; }
 
-template <typename T> T clamp_color(T color) {
-  return color < 0 ? 0
-                   : color > MAX_COLOR_COMPONENT ? MAX_COLOR_COMPONENT : color;
-}
-
-uint8_t assert_color(uint8_t color) {
-  assert(color <= MAX_COLOR_COMPONENT);
-  return color;
+template <typename T> uint8_t clamp_color(T color) {
+  return static_cast<uint8_t>(clamp<T>(color, 0, MAX_COLOR_COMPONENT));
 }
 
 void set_palette(PaletteDef const &pal_data, bool &is_noisy) {
@@ -575,11 +586,10 @@ void set_palette(PaletteDef const &pal_data, bool &is_noisy) {
     blue_inc = (blue_end - working_blue) / difference;
 
     for (int j = range.first_index; j <= range.last_index; j++) {
-      s_pal_entry(
-          static_cast<uint8_t>(j),
-          static_cast<uint8_t>(clamp_color(std::pow(working_red, 1 / GAMMA))),
-          static_cast<uint8_t>(clamp_color(std::pow(working_green, 1 / GAMMA))),
-          static_cast<uint8_t>(clamp_color(std::pow(working_blue, 1 / GAMMA))));
+      s_pal_entry(static_cast<uint8_t>(j),
+                  clamp_color(std::pow(working_red, 1 / GAMMA)),
+                  clamp_color(std::pow(working_green, 1 / GAMMA)),
+                  clamp_color(std::pow(working_blue, 1 / GAMMA)));
 
       working_red = clamp(working_red + red_inc, 0.f, FLT_MAX);
       working_green = clamp(working_green + green_inc, 0.f, FLT_MAX);
