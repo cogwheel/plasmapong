@@ -414,7 +414,9 @@ inline void set_pal_entry(uint8_t const index, uint8_t const red,
 }
 
 struct MouseState {
-  int x, y, buttons;
+  int x;
+  int y;
+  int buttons;
 };
 
 void get_mouse_state(MouseState &mouse) {
@@ -480,7 +482,8 @@ inline void set_pixels_clipped(uint8_t *const buffer, int x, int y,
 
 void line(uint8_t *const buffer, int const x1, int const y1, int const x2,
           int const y2, uint8_t const color) {
-  int x = x1, y = y1;
+  int x = x1;
+  int y = y1;
 
   if (y1 == y2) {
     if (x1 > x2)
@@ -525,14 +528,14 @@ void line(uint8_t *const buffer, int const x1, int const y1, int const x2,
   }
 }
 
-inline void draw_digit(uint8_t *buffer, int x, int y, int digit) {
+inline void draw_digit(uint8_t *buffer, int const x, int const y, int const digit) {
   for (int y_loop = 0; y_loop < DIGIT_HEIGHT; y_loop++) {
     std::memcpy(buffer + INDEX_OF(x, y + y_loop), digit_sprites[digit][y_loop],
                 DIGIT_WIDTH);
   }
 }
 
-void draw_number(uint8_t *buffer, int x, int y, int number) {
+void draw_number(uint8_t * const buffer, int x, int const y, int number) {
   if (number < 10) {
     draw_digit(buffer, x, y, number);
     return;
@@ -542,11 +545,9 @@ void draw_number(uint8_t *buffer, int x, int y, int number) {
   while (divisor > number) {
     divisor /= 10;
   }
-  int offset = 0;
   do {
-    int digit = number / divisor;
-    draw_digit(buffer, x + offset, y, digit);
-    offset += DIGIT_SPACING;
+    draw_digit(buffer, x, y, number / divisor);
+    x += DIGIT_SPACING;
     number %= divisor;
     divisor /= 10;
   } while (divisor > 0);
@@ -632,9 +633,9 @@ void wave_effect(uint8_t *const buffer) {
 
 void dot_effect(uint8_t *const buffer) {
   for (int i = 0; i < 8; i++) {
-    // TODO: single declaration per line
-    int const drop_x = get_rnd() % (SCREEN_WIDTH - 3),
-              drop_y = get_rnd() % (SCREEN_HEIGHT - 3);
+    int const drop_x = get_rnd() % (SCREEN_WIDTH - 3);
+    int const drop_y = get_rnd() % (SCREEN_HEIGHT - 3);
+
     // top-mid
     set_pixel(buffer, drop_x + 1, drop_y, MAX_COLOR);
 
@@ -696,7 +697,6 @@ void blur(uint8_t *const front_buffer, uint8_t *const back_buffer,
           bool const is_noisy) {
   for (int y = 0; y < SCREEN_HEIGHT; y++) {
     for (int x = 0; x < SCREEN_WIDTH; x++) {
-
       int weighted_sum = 0;
       int const index = target_y[y] + target_x[x];
 
@@ -753,7 +753,10 @@ void init(uint8_t *&front_buffer, uint8_t *&back_buffer) {
 }
 
 struct GameData {
-  float ball_x, ball_y, ball_dx, ball_dy;
+  float ball_x;
+  float ball_y;
+  float ball_dx;
+  float ball_dy;
   float speed;
 
   EffectFunc curr_effect;
@@ -778,7 +781,7 @@ void enter_play(GameData &g, MouseState const &) {
   init_rnd();
   set_palette(pal_table[get_rnd() % NUM_PALETTES], g.is_noisy);
 
-  static float const DIAG_START = START_SPEED / std::sqrt(2.0);
+  float const DIAG_START = START_SPEED / std::sqrt(2.0);
 
   g.ball_x = MID_X;
   g.ball_y = MID_Y;
