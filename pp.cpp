@@ -27,7 +27,7 @@ SOFTWARE.
  * the source. The shortened names are used here in order for clangd to work.
  */
 
-#include <algorith>  // <algorithm>
+#include <algorith> // <algorithm>
 #include <cassert>
 #include <cfloat>
 #include <cmath>
@@ -37,8 +37,7 @@ SOFTWARE.
 #include <iostream>
 #include <memory>
 
-#include <conio.h>
-#include <dos.h>
+#include "system.hpp"
 
 using std::uint8_t;
 
@@ -99,46 +98,20 @@ using std::uint8_t;
 
 #define TAU 6.2831853071795864
 
-// System
-#define VIDEO_INT 0x10          // the BIOS video interrupt.
-#define WRITE_DOT 0x0C          // BIOS func to plot a pixel.
-#define SET_MODE 0x00           // BIOS func to set the video mode.
-#define GET_MODE 0x0F           // BIOS func to get the video mode.
-#define VGA_256_COLOR_MODE 0x13 // use to set 256-color mode.
-
-#define MOUSE_INT 0x33
-#define MOUSE_SETUP 0x0
-#define MOUSE_STATUS 0x3
 #define LMB 1
 #define RMB 2
 #define QUIT (LMB + RMB)
 
-#define DISPLAY_ENABLE 0x01 // VGA input status bits
-#define INPUT_STATUS 0x03da
-#define VRETRACE 0x08
-
-#define PALETTE_MASK 0x03c6
-#define PALETTE_REGISTER_READ 0x03c7
-#define PALETTE_REGISTER_WRITE 0x03c8
-#define PALETTE_DATA 0x03c9
-
 // Graphics
-#define SCREEN_WIDTH 320 // width in pixels of mode 0x13
 #define MAX_X (SCREEN_WIDTH - 1)
 #define MID_X (SCREEN_WIDTH >> 1)
-
-#define SCREEN_HEIGHT 200 // height in pixels of mode 0x13
 #define MAX_Y (SCREEN_HEIGHT - 1)
 #define MID_Y (SCREEN_HEIGHT >> 1)
-
-#define SCREEN_SIZE (SCREEN_WIDTH * SCREEN_HEIGHT)
 
 #define INDEX_OF(x, y) ((y)*SCREEN_WIDTH + (x))
 #define IS_ONSCREEN(x, y) ((x) >= 0 && (x) <= MAX_X && (y) >= 0 && (y) <= MAX_Y)
 
-#define NUM_COLORS 256 // number of colors in mode 0x13
 #define MAX_COLOR (NUM_COLORS - 1)
-#define MAX_COLOR_COMPONENT 63 // RGB components in the palette
 
 #define MAX_WEIGHT 12
 
@@ -366,8 +339,7 @@ static int const NUM_PALETTES = sizeof(pal_table) / sizeof(PaletteDef);
   assert((x) >= (min));                                                        \
   assert((x) <= (max))
 
-#define assert_onscreen(x, y)                                                  \
-  assert(IS_ONSCREEN(x, y))
+#define assert_onscreen(x, y) assert(IS_ONSCREEN(x, y))
 
 template <typename T> inline T clamp(T const val, T const min, T const max) {
   return std::min(max, std::max(min, val));
@@ -377,77 +349,13 @@ template <typename T> uint8_t clamp_color(T const color) {
   return static_cast<uint8_t>(clamp<T>(color, 0, MAX_COLOR_COMPONENT));
 }
 
-/*
- * System interface
- *
- * DOS/PC-specific functionality
- */
+void get_scaled_mouse_state(MouseState &mouse) {
+  get_mouse_state(mouse);
 
-static uint8_t *const VGA = (uint8_t *)0xA0000000L; // location of video memory
-
-uint8_t get_mode() {
-  REGS regs;
-  regs.h.ah = GET_MODE;
-  int86(VIDEO_INT, &regs, &regs);
-  return regs.h.al;
-}
-
-void set_mode(uint8_t const mode) {
-  REGS regs;
-  regs.h.ah = SET_MODE;
-  regs.h.al = mode;
-  int86(VIDEO_INT, &regs, &regs);
-}
-
-inline void show_buffer(uint8_t *const front_buffer) {
-  while ((inp(INPUT_STATUS) & VRETRACE))
-    ;
-  while (!(inp(INPUT_STATUS) & VRETRACE))
-    ;
-
-  std::memcpy(VGA, front_buffer, SCREEN_SIZE);
-}
-
-inline void set_pal_entry(uint8_t const index, uint8_t const red,
-                          uint8_t const green, uint8_t const blue) {
-  assert(red <= MAX_COLOR_COMPONENT);
-  assert(green <= MAX_COLOR_COMPONENT);
-
-  outp(PALETTE_MASK, 0xff);
-  outp(PALETTE_REGISTER_WRITE, index); // tell it what index to use (0-255)
-  outp(PALETTE_DATA, red);             // enter the red
-  outp(PALETTE_DATA, green);           // green
-  outp(PALETTE_DATA, blue);            // blue
-}
-
-bool has_mouse() {
-  REGS regs;
-  regs.x.ax = MOUSE_SETUP;
-  int86(MOUSE_INT, &regs, &regs);
-  return static_cast<bool>(regs.x.ax);
-}
-
-struct MouseState {
-  int x;
-  int y;
-  int buttons;
-};
-
-void get_mouse_state(MouseState &mouse) {
-  REGS regs;
-  regs.x.ax = MOUSE_STATUS;
-  int86(MOUSE_INT, &regs, &regs);
-
-  // DOS doubles the X coord at 320 SCREEN_WIDTH
-  int const raw_x = regs.x.cx >> 1;
-  int const raw_y = regs.x.dx;
-
-  mouse.x = raw_x * MOUSE_X_SCALE + MOUSE_MARGIN;
-  mouse.y = raw_y * MOUSE_Y_SCALE + MOUSE_MARGIN;
+  mouse.x = mouse.x * MOUSE_X_SCALE + MOUSE_MARGIN;
+  mouse.y = mouse.y * MOUSE_Y_SCALE + MOUSE_MARGIN;
 
   assert_onscreen(mouse.x, mouse.y);
-
-  mouse.buttons = regs.x.bx;
 }
 
 /*
@@ -475,7 +383,8 @@ inline void set_pixels(uint8_t *const buffer, int const x, int const y,
   if (size > 1) {
     std::memset(buffer + INDEX_OF(x, y), color, size);
   } else if (size == 1) {
-    // TODO: on old hardware, it might be better to unroll this for small sizes > 1
+    // TODO: on old hardware, it might be better to unroll this for small sizes
+    // > 1
     set_pixel(buffer, x, y, color);
   }
 }
@@ -537,14 +446,15 @@ void line(uint8_t *const buffer, int const x1, int const y1, int const x2,
   }
 }
 
-inline void draw_digit(uint8_t *buffer, int const x, int const y, int const digit) {
+inline void draw_digit(uint8_t *buffer, int const x, int const y,
+                       int const digit) {
   for (int y_loop = 0; y_loop < DIGIT_HEIGHT; y_loop++) {
     std::memcpy(buffer + INDEX_OF(x, y + y_loop), digit_sprites[digit][y_loop],
                 DIGIT_WIDTH);
   }
 }
 
-void draw_number(uint8_t * const buffer, int x, int const y, int number) {
+void draw_number(uint8_t *const buffer, int x, int const y, int number) {
   if (number < 0) {
     // TODO: ascii table (maybe I should use cogp47?)
     int const dash_y = y + (DIGIT_HEIGHT >> 1);
@@ -759,9 +669,7 @@ void init(uint8_t *&front_buffer, uint8_t *&back_buffer) {
     std::exit(1);
   }
 
-  set_mode(VGA_256_COLOR_MODE);
-
-  if (get_mode() != VGA_256_COLOR_MODE) {
+  if (!set_vga_mode()) {
     std::cerr << "Unable to set 320x200x256 color mode\n";
     std::exit(1);
   }
@@ -992,8 +900,6 @@ static const StateEntry state_table[kNumStates] = {
 };
 
 int main() {
-  uint8_t const old_mode = get_mode();
-
   uint8_t *front_buffer, *back_buffer;
   init(front_buffer, back_buffer);
 
@@ -1003,7 +909,8 @@ int main() {
   State state = kPlaying;
   enter_play(g, mouse);
 
-  for (get_mouse_state(mouse); mouse.buttons != QUIT; get_mouse_state(mouse)) {
+  for (get_scaled_mouse_state(mouse); mouse.buttons != QUIT;
+       get_scaled_mouse_state(mouse)) {
     State const new_state = state_table[state].update(g, mouse);
 
     if (new_state != state) {
@@ -1026,7 +933,7 @@ int main() {
     std::swap(front_buffer, back_buffer);
   }
 
-  set_mode(old_mode);
+  reset_mode();
 
   return 0;
 }

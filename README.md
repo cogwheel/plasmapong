@@ -28,7 +28,7 @@ Currently using [OpenWactom 2](https://github.com/open-watcom/open-watcom-v2).
 For an optimized release build:
 
 ```
-> wcl -q -mc -wx -we -ox -5 -fp5 -fpi87 -DNDEBUG pp.cpp
+wcl -q -mc -wx -we -ox -5 -fp5 -fpi87 -DNDEBUG pp.cpp dos_system.cpp
 ```
 
 This game was originally developed on a Pentium MMX 233, hence the `-5 -fp5 -fpi87` options.
