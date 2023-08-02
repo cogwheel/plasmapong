@@ -37,6 +37,7 @@ SOFTWARE.
 #include <iostream>
 #include <memory>
 
+#include "palettes.hpp"
 #include "sprites.hpp"
 #include "system.hpp"
 
@@ -79,16 +80,6 @@ using std::uint8_t;
 #define GAMMA ((float)2.2)
 
 /*
- * Data constants
- *
- * These are characteristics of the sprite and palette data that will eventually
- * be read from a file
- */
-
-
-#define MAX_PALETTE_RANGES 8
-
-/*
  * Defined constants
  *
  * Changing these values would require code changes, name changes, or
@@ -123,128 +114,6 @@ using std::uint8_t;
 
 #define MOUSE_X_SCALE (float(MOUSE_X_RANGE) / (SCREEN_WIDTH))
 #define MOUSE_Y_SCALE (float(MOUSE_Y_RANGE) / (SCREEN_HEIGHT))
-
-/*
- * Graphics data
- */
-
-struct PaletteColor {
-  uint8_t r;
-  uint8_t g;
-  uint8_t b;
-};
-
-// TODO: Remove need to specify both start and end for each entry
-struct PaletteRange {
-  uint8_t first_index;
-  uint8_t last_index;
-  PaletteColor first_color;
-  PaletteColor last_color;
-};
-
-// TODO: read these from a file
-struct PaletteDef {
-  // using the old static-sized approach since C++98 doesn't have initializer
-  // lists
-  int num_ranges;
-  bool is_noisy;
-  PaletteRange ranges[MAX_PALETTE_RANGES];
-};
-
-// clang-format off
-static PaletteDef const pal_table[] = {
-  { 5, true, {
-    { 0, 31,
-      {0,   0,   0},
-      {0,   0,  63},
-    },
-    {32,  63,
-      {0,   0,  63},
-      {0,   0,   0},
-    },
-    {64,  95,
-      {0,   0,   0},
-      {63,   0,   0},
-    },
-    {96, 127,
-      {63,   0,   0},
-      {0,   0,   0},
-    },
-    {128, 255,
-      {0,   0,   0},
-      {63,  63,   0},
-    },
-  }},
-  { 5, true, {
-    {0,  31,
-      {0,   0,   0},
-      {21,   39,  23},
-    },
-    {32,  63,
-      {21,   39,  23},
-      {63,   19,   0},
-    },
-    {64,  95,
-      {63,   19,   0},
-      {32,   33,   27},
-    },
-    {96, 127,
-      {32,   33,   27},
-      {26,   5,   18},
-    },
-    {128, 255,
-      {26,   5,   18},
-      {63,  63,   0},
-    },
-  }},
-  { 5, true, {
-    {0,  31,
-      {0,   0,   0},
-      {21,   33,  40},
-    },
-    {32,  63,
-      {21,   33,  40},
-      {12,   12,   20},
-    },
-    {64,  110,
-      {12,   12,   20},
-      {43,   33,   38},
-    },
-    {111, 127,
-      {43,   33,   38},
-      {63,   17,   3},
-    },
-    {128, 255,
-      {63,   17,   3},
-      {54,  46,   30},
-    },
-  }},
-  { 5, false, {
-    {0,  31,
-      {0,   0,   0},
-      {57,   57,  63},
-    },
-    {32,  63,
-      {57,   57,  63},
-      {0,   0,   0},
-    },
-    {64,  110,
-      {0,   0,   0},
-      {63,   63,   63},
-    },
-    {111, 127,
-      {63,   63,   63},
-      {0,   0,   0},
-    },
-    {128, 255,
-      {0,   0,   0},
-      {63,  63,   63},
-    },
-  }}
-};
-// clang-format on
-
-static int const NUM_PALETTES = sizeof(pal_table) / sizeof(PaletteDef);
 
 /*
  * Helpers
@@ -624,7 +493,7 @@ struct GameData {
 
 void enter_play(GameData &g, MouseState const &) {
   init_rnd();
-  set_palette(pal_table[get_rnd() % NUM_PALETTES], g.is_noisy);
+  set_palette(palettes[get_rnd() % NUM_PALETTES], g.is_noisy);
 
   float const DIAG_START = START_SPEED / std::sqrt(2.0);
 
@@ -657,7 +526,7 @@ void process_hit(GameData &g, float &front_delta, float &front_pos,
   front_delta = g.speed * direction;
   front_pos = paddle_pos + (paddle_pos - front_pos);
   side_delta = g.speed * (side_pos - mouse_pos) * SIDE_SPEED_FACTOR;
-  set_palette(pal_table[get_rnd() % NUM_PALETTES], g.is_noisy);
+  set_palette(palettes[get_rnd() % NUM_PALETTES], g.is_noisy);
   g.curr_effect = choose_effect();
   g.score++;
 }

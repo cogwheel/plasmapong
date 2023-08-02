@@ -1,7 +1,7 @@
 #include "sprites.hpp"
 
 // TODO: this should be read from a file instead of stored in the EXE
-// TODO: consider using cogp47
+// TODO: full asci tilemap (consider using cogp47)
 
 // clang-format off
 std::uint8_t const digit_sprites[10][DIGIT_HEIGHT][DIGIT_WIDTH] = {
