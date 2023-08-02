@@ -768,7 +768,8 @@ typedef void (*RenderFn)(uint8_t *buffer, GameData const &g,
 struct StateEntry {
   EnterFn enter;
   UpdateFn update;
-  RenderFn render;
+  RenderFn render_back;
+  RenderFn render_front;
 };
 
 inline void apply_deltas(GameData &g) {
@@ -826,9 +827,11 @@ State update_play(GameData &g, MouseState const &mouse) {
   return is_out ? kLosing : kPlaying;
 }
 
-void render_play(uint8_t *buffer, GameData const &g, MouseState const &mouse) {
+void render_play_back(uint8_t *buffer, GameData const &g, MouseState const&) {
   g.curr_effect(buffer);
+}
 
+void render_play_front(uint8_t *buffer, GameData const &g, MouseState const &mouse) {
   draw_number(buffer, SCORE_X, SCORE_Y, g.score);
 
   // draw paddles
@@ -899,9 +902,9 @@ void render_lost(uint8_t *buffer, GameData const &g, MouseState const &) {
 }
 
 static const StateEntry state_table[kNumStates] = {
-    {enter_play, update_play, render_play}, // kPlaying
-    {NULL, update_losing, render_play},     // kLosing
-    {enter_lost, update_lost, render_lost}, // kLost
+    {enter_play, update_play, render_play_back, render_play_front}, // kPlaying
+    {NULL, update_losing, render_play_back, render_play_front},     // kLosing
+    {enter_lost, update_lost, NULL, render_lost},                   // kLost
 };
 
 int main() {
@@ -932,9 +935,13 @@ int main() {
       }
     }
 
+    if (state_table[state].render_back) {
+      state_table[state].render_back(back_buffer, g, mouse);
+    }
+
     blur(front_buffer, back_buffer, g.is_noisy);
 
-    state_table[state].render(front_buffer, g, mouse);
+    state_table[state].render_front(front_buffer, g, mouse);
 
     show_buffer(front_buffer);
     std::swap(front_buffer, back_buffer);
