@@ -36,7 +36,60 @@ SOFTWARE.
 
 using std::uint8_t;
 
-// General
+/*
+ * Configuration constants
+ *
+ * These will likely become settings/config files, command line args, etc.
+ */
+
+// Gameplay
+#define START_SPEED 1.8
+#define SIDE_SPEED_FACTOR (1.0 / 8)
+
+#define COLLISION_THRESHOLD 15
+
+#define PADDLE_MARGIN_HIT 13
+#define HALF_PADDLE_HIT 18
+
+#define MAX_RAND_NUMS 1021
+
+// Graphics
+#define SCORE_X 10
+#define SCORE_Y 10
+
+#define COUNTDOWN_X 154
+#define COUNTDOWN_Y 93
+#define COUNTDOWN_FRAMES 4
+
+#define PADDLE_MARGIN 10
+#define HALF_PADDLE 16
+
+#define NEBULA_PARTICLES 25
+
+#define DIM_AMOUNT 0.2
+#define GAMMA ((float)2.2)
+
+/*
+ * Data constants
+ *
+ * These are characteristics of the sprite and palette data that will eventually
+ * be read from a file
+ */
+
+#define DIGIT_WIDTH 5
+#define DIGIT_HEIGHT 7
+#define DIGIT_SIZE (DIGIT_WIDTH * DIGIT_HEIGHT)
+#define DIGIT_SPACING 7
+
+#define MAX_PALETTE_RANGES 8
+
+/*
+ * Defined constants
+ *
+ * Changing these values would require code changes, name changes, or
+ * tearing apart the fabric of reality.
+ */
+
 #define TAU 6.2831853071795864
 
 // System
@@ -77,44 +130,11 @@ using std::uint8_t;
 #define NUM_COLORS 256 // number of colors in mode 0x13
 #define MAX_COLOR (NUM_COLORS - 1)
 #define MAX_COLOR_COMPONENT 63 // RGB components in the palette
-#define GAMMA ((float)2.2)
-
-#define DIGIT_WIDTH 5
-#define DIGIT_HEIGHT 7
-#define DIGIT_SIZE (DIGIT_WIDTH * DIGIT_HEIGHT)
-#define DIGIT_SPACING 7
-
-#define MAX_PALETTE_RANGES 8
 
 #define MAX_WEIGHT 12
-#define DIM_AMOUNT 0.2
 
-// LUT sizes
-#define MAX_RAND_NUMS 1021
-// 1021 is prime so it should be hard to stumble upon cycles
+// Others
 #define NUM_ANGLES 256
-
-// Gameplay
-#define START_SPEED 1.8
-#define SIDE_SPEED_FACTOR (1.0 / 8)
-
-#define COLLISION_THRESHOLD 15
-
-#define PADDLE_MARGIN_HIT 13
-#define HALF_PADDLE_HIT 18
-
-#define NEBULA_PARTICLES 25
-
-// UI
-#define SCORE_X 10
-#define SCORE_Y 10
-
-#define COUNTDOWN_X 154
-#define COUNTDOWN_Y 93
-#define COUNTDOWN_FRAMES 4
-
-#define PADDLE_MARGIN 10
-#define HALF_PADDLE 16
 
 #define MOUSE_MARGIN ((PADDLE_MARGIN) + (HALF_PADDLE))
 #define MOUSE_X_RANGE ((SCREEN_WIDTH)-2 * (MOUSE_MARGIN))
@@ -123,9 +143,9 @@ using std::uint8_t;
 #define MOUSE_X_SCALE (float(MOUSE_X_RANGE) / (SCREEN_WIDTH))
 #define MOUSE_Y_SCALE (float(MOUSE_Y_RANGE) / (SCREEN_HEIGHT))
 
-template <typename T> inline T clamp(T val, T min, T max) {
-  return std::min(max, std::max(min, val));
-}
+/*
+ * Graphics data
+ */
 
 // clang-format off
 uint8_t const digit_sprites[10][DIGIT_HEIGHT][DIGIT_WIDTH] = {
@@ -211,41 +231,6 @@ uint8_t const digit_sprites[10][DIGIT_HEIGHT][DIGIT_WIDTH] = {
 };
 // clang-format on
 
-int rnd_tbl[MAX_RAND_NUMS];
-int next_rnd_index;
-
-struct Nebula {
-  // distance from center of ball
-  float r[NEBULA_PARTICLES];
-
-  // starting angle
-  uint8_t phase[NEBULA_PARTICLES];
-
-  // change of angle each frame
-  uint8_t sweep[NEBULA_PARTICLES];
-};
-
-double cosTable[NUM_ANGLES], sinTable[NUM_ANGLES];
-
-inline int get_rnd() {
-  if (++next_rnd_index >= MAX_RAND_NUMS) {
-    next_rnd_index = 0;
-  }
-  return rnd_tbl[next_rnd_index];
-}
-
-void init_rnd() {
-  next_rnd_index = 0;
-  for (int i = 0; i < MAX_RAND_NUMS; i++) {
-    rnd_tbl[i] = std::rand();
-  }
-}
-
-unsigned short target_x[SCREEN_WIDTH];
-unsigned short target_y[SCREEN_HEIGHT];
-
-short weighted_averages[MAX_WEIGHT * MAX_COLOR];
-
 struct PaletteColor {
   uint8_t r;
   uint8_t g;
@@ -270,7 +255,7 @@ struct PaletteDef {
 };
 
 // clang-format off
-PaletteDef pal_table[] = {
+static PaletteDef const pal_table[] = {
   { 5, true, {
     { 0, 31,
       {0,   0,   0},
@@ -362,9 +347,35 @@ PaletteDef pal_table[] = {
 };
 // clang-format on
 
-int const NUM_PALETTES = sizeof(pal_table) / sizeof(PaletteDef);
+static int const NUM_PALETTES = sizeof(pal_table) / sizeof(PaletteDef);
 
-uint8_t *const VGA = (uint8_t *)0xA0000000L; // location of video memory
+/*
+ * Helpers
+ */
+
+#define assert_minmax(x, min, max)                                             \
+  assert((x) >= (min));                                                        \
+  assert((x) <= (max))
+
+#define assert_onscreen(x, y)                                                  \
+  assert_minmax((x), 0, MAX_X);                                                \
+  assert_minmax((y), 0, MAX_Y)
+
+template <typename T> inline T clamp(T val, T min, T max) {
+  return std::min(max, std::max(min, val));
+}
+
+template <typename T> uint8_t clamp_color(T color) {
+  return static_cast<uint8_t>(clamp<T>(color, 0, MAX_COLOR_COMPONENT));
+}
+
+/*
+ * System interface
+ *
+ * DOS/PC-specific functionality
+ */
+
+static uint8_t *const VGA = (uint8_t *)0xA0000000L; // location of video memory
 
 uint8_t get_mode() {
   REGS regs;
@@ -381,13 +392,23 @@ void set_mode(uint8_t mode) {
   int86(VIDEO_INT, &regs, &regs);
 }
 
-#define assert_minmax(x, min, max)                                             \
-  assert((x) >= (min));                                                        \
-  assert((x) <= (max))
+inline void show_buffer(uint8_t *const front_buffer) {
+  while ((inp(INPUT_STATUS) & VRETRACE))
+    ;
+  while (!(inp(INPUT_STATUS) & VRETRACE))
+    ;
 
-#define assert_onscreen(x, y)                                                  \
-  assert_minmax((x), 0, MAX_X);                                                \
-  assert_minmax((y), 0, MAX_Y)
+  std::memcpy(VGA, front_buffer, SCREEN_SIZE);
+}
+
+inline void set_pal_entry(uint8_t index, uint8_t red, uint8_t green,
+                          uint8_t blue) {
+  outp(PALETTE_MASK, 0xff);
+  outp(PALETTE_REGISTER_WRITE, index); // tell it what index to use (0-255)
+  outp(PALETTE_DATA, red);             // enter the red
+  outp(PALETTE_DATA, green);           // green
+  outp(PALETTE_DATA, blue);            // blue
+}
 
 struct MouseState {
   int x, y, buttons;
@@ -409,6 +430,10 @@ void get_mouse_state(MouseState &mouse) {
 
   mouse.buttons = regs.x.bx;
 }
+
+/*
+ * Graphics routines
+ */
 
 inline void set_pixel(uint8_t *buffer, int x, int y, uint8_t color) {
   assert_onscreen(x, y);
@@ -445,24 +470,6 @@ inline void set_pixels_clipped(uint8_t *buffer, int x, int y, uint8_t color,
   size = clamp(size, 0, MAX_X - x);
 
   set_pixels(buffer, x, y, color, size);
-}
-
-inline void show_buffer(uint8_t *&front_buffer) {
-  while ((inp(INPUT_STATUS) & VRETRACE))
-    ;
-  while (!(inp(INPUT_STATUS) & VRETRACE))
-    ;
-
-  std::memcpy(VGA, front_buffer, SCREEN_SIZE);
-}
-
-inline void s_pal_entry(uint8_t index, uint8_t red, uint8_t green,
-                        uint8_t blue) {
-  outp(PALETTE_MASK, 0xff);
-  outp(PALETTE_REGISTER_WRITE, index); // tell it what index to use (0-255)
-  outp(PALETTE_DATA, red);             // enter the red
-  outp(PALETTE_DATA, green);           // green
-  outp(PALETTE_DATA, blue);            // blue
 }
 
 void line(uint8_t *buffer, int x1, int y1, int x2, int y2, uint8_t color) {
@@ -517,13 +524,101 @@ void line(uint8_t *buffer, int x1, int y1, int x2, int y2, uint8_t color) {
   }
 }
 
-///--------------main stuff
+inline void draw_digit(uint8_t *buffer, int x, int y, int digit) {
+  for (int y_loop = 0; y_loop < DIGIT_HEIGHT; y_loop++) {
+    std::memcpy(buffer + INDEX_OF(x, y + y_loop), digit_sprites[digit][y_loop],
+                DIGIT_WIDTH);
+  }
+}
+
+void draw_number(uint8_t *buffer, int x, int y, int number) {
+  if (number < 10) {
+    draw_digit(buffer, x, y, number);
+    return;
+  }
+
+  int divisor = 10000; // Max 16-bit power of 10
+  while (divisor > number) {
+    divisor /= 10;
+  }
+  int offset = 0;
+  do {
+    int digit = number / divisor;
+    draw_digit(buffer, x + offset, y, digit);
+    offset += DIGIT_SPACING;
+    number %= divisor;
+    divisor /= 10;
+  } while (divisor > 0);
+}
+
+/*
+ * Look-up tables
+ */
+
+int rnd_tbl[MAX_RAND_NUMS];
+int next_rnd_index;
+
+inline int get_rnd() {
+  if (++next_rnd_index >= MAX_RAND_NUMS) {
+    next_rnd_index = 0;
+  }
+  return rnd_tbl[next_rnd_index];
+}
+
+void init_rnd() {
+  next_rnd_index = 0;
+  for (int i = 0; i < MAX_RAND_NUMS; i++) {
+    rnd_tbl[i] = std::rand();
+  }
+}
+
+double cos_table[NUM_ANGLES], sin_table[NUM_ANGLES];
+
+void fill_trig_tables() {
+  for (int i = 0; i < NUM_ANGLES; i++) {
+    double const radians = TAU * i / NUM_ANGLES;
+    cos_table[i] = std::cos(radians);
+    sin_table[i] = std::sin(radians);
+  }
+}
+
+unsigned short target_x[SCREEN_WIDTH];
+unsigned short target_y[SCREEN_HEIGHT];
+
+void fill_targets() {
+  for (int i = 0; i < SCREEN_WIDTH; i++) {
+    short target = ((i - MID_X) / 1.03) + MID_X;
+    if (target < (MID_X - 1))
+      ++target;
+    target_x[i] = clamp<short>(target, 0, SCREEN_WIDTH);
+  }
+
+  for (int i = 0; i < SCREEN_HEIGHT; i++) {
+    short target = (((i - MID_Y) / 1.03) + MID_Y);
+    if (i < (MID_Y - 1))
+      ++target;
+    target_y[i] = SCREEN_WIDTH * clamp<short>(target, 0, SCREEN_HEIGHT);
+  }
+}
+
+short weighted_averages[MAX_WEIGHT * MAX_COLOR];
+
+void fill_weighted_averages() {
+  for (int i = 0; i < (MAX_WEIGHT * MAX_COLOR); i++) {
+    // TODO: DIM_AMOUNT should be subtracted instead of divided maybe?
+    weighted_averages[i] = i / (MAX_WEIGHT + DIM_AMOUNT);
+  }
+}
+
+/*
+ * Background effects
+ */
 
 typedef void (*EffectFunc)(uint8_t *);
 
 void none(uint8_t *) {}
 
-void waves(uint8_t *buffer) {
+void wave_effect(uint8_t *buffer) {
   int vertices[11];
   for (int i = 0; i <= 10; i++) {
     vertices[i] = get_rnd() % 60 + 60;
@@ -533,7 +628,7 @@ void waves(uint8_t *buffer) {
   }
 }
 
-void dots(uint8_t *buffer) {
+void dot_effect(uint8_t *buffer) {
   for (int i = 0; i < 8; i++) {
     int drop_x = get_rnd() % (SCREEN_WIDTH - 3),
         drop_y = get_rnd() % (SCREEN_HEIGHT - 3);
@@ -548,21 +643,18 @@ void dots(uint8_t *buffer) {
   }
 }
 
-void lines(uint8_t *buffer) {
+void line_effect(uint8_t *buffer) {
   line(buffer, get_rnd() % SCREEN_WIDTH, get_rnd() % SCREEN_HEIGHT,
        get_rnd() % SCREEN_WIDTH, get_rnd() % SCREEN_HEIGHT,
        static_cast<uint8_t>(get_rnd() % NUM_COLORS));
 }
 
-static EffectFunc const effects[] = {none, dots, lines, waves};
+static EffectFunc const effects[] = {none, dot_effect, line_effect,
+                                     wave_effect};
 
 static int const NUM_EFFECTS = sizeof(effects) / sizeof(EffectFunc);
 
 inline EffectFunc choose_effect() { return effects[get_rnd() % NUM_EFFECTS]; }
-
-template <typename T> uint8_t clamp_color(T color) {
-  return static_cast<uint8_t>(clamp<T>(color, 0, MAX_COLOR_COMPONENT));
-}
 
 void set_palette(PaletteDef const &pal_data, bool &is_noisy) {
   float red_inc, green_inc, blue_inc, difference, working_red, working_green,
@@ -586,10 +678,10 @@ void set_palette(PaletteDef const &pal_data, bool &is_noisy) {
     blue_inc = (blue_end - working_blue) / difference;
 
     for (int j = range.first_index; j <= range.last_index; j++) {
-      s_pal_entry(static_cast<uint8_t>(j),
-                  clamp_color(std::pow(working_red, 1 / GAMMA)),
-                  clamp_color(std::pow(working_green, 1 / GAMMA)),
-                  clamp_color(std::pow(working_blue, 1 / GAMMA)));
+      set_pal_entry(static_cast<uint8_t>(j),
+                    clamp_color(std::pow(working_red, 1 / GAMMA)),
+                    clamp_color(std::pow(working_green, 1 / GAMMA)),
+                    clamp_color(std::pow(working_blue, 1 / GAMMA)));
 
       working_red = clamp(working_red + red_inc, 0.f, FLT_MAX);
       working_green = clamp(working_green + green_inc, 0.f, FLT_MAX);
@@ -627,6 +719,10 @@ void blur(uint8_t *front_buffer, uint8_t *back_buffer, bool is_noisy) {
   }
 }
 
+/*
+ * Gameplay
+ */
+
 void init(uint8_t *&front_buffer, uint8_t *&back_buffer) {
   // allocate mem for the front_buffer
   if ((front_buffer = new uint8_t[SCREEN_SIZE]) == NULL) {
@@ -644,30 +740,14 @@ void init(uint8_t *&front_buffer, uint8_t *&back_buffer) {
 
   set_mode(VGA_256_COLOR_MODE);
 
-  for (int i = 0; i < SCREEN_WIDTH; i++) {
-    short target = ((i - MID_X) / 1.03) + MID_X;
-    if (target < (MID_X - 1))
-      ++target;
-    target_x[i] = clamp<short>(target, 0, SCREEN_WIDTH);
+  if (get_mode() != VGA_256_COLOR_MODE) {
+    std::cerr << "Unable to set 320x200x256 color mode\n";
+    std::exit(1);
   }
 
-  for (int i = 0; i < SCREEN_HEIGHT; i++) {
-    short target = (((i - MID_Y) / 1.03) + MID_Y);
-    if (i < (MID_Y - 1))
-      ++target;
-    target_y[i] = SCREEN_WIDTH * clamp<short>(target, 0, SCREEN_HEIGHT);
-  }
-
-  for (int i = 0; i < (MAX_WEIGHT * MAX_COLOR); i++) {
-    // TODO: DIM_AMOUNT should be subtracted instead of divided maybe?
-    weighted_averages[i] = i / (MAX_WEIGHT + DIM_AMOUNT);
-  }
-
-  for (int i = 0; i < NUM_ANGLES; i++) {
-    double const radians = TAU * i / NUM_ANGLES;
-    cosTable[i] = std::cos(radians);
-    sinTable[i] = std::sin(radians);
-  }
+  fill_trig_tables();
+  fill_targets();
+  fill_weighted_averages();
 
   std::srand(15);
   init_rnd();
@@ -683,7 +763,16 @@ struct GameData {
 
   bool is_noisy;
 
-  Nebula nebula;
+  struct {
+    // distance from center of ball
+    float r[NEBULA_PARTICLES];
+
+    // starting angle
+    uint8_t phase[NEBULA_PARTICLES];
+
+    // change of angle each frame
+    uint8_t sweep[NEBULA_PARTICLES];
+  } nebula;
 };
 
 void enter_play(GameData &g, MouseState const &) {
@@ -724,33 +813,6 @@ void process_hit(GameData &g, float &front_delta, float &front_pos,
   set_palette(pal_table[get_rnd() % NUM_PALETTES], g.is_noisy);
   g.curr_effect = choose_effect();
   g.score++;
-}
-
-inline void draw_digit(uint8_t *buffer, int x, int y, int digit) {
-  for (int y_loop = 0; y_loop < DIGIT_HEIGHT; y_loop++) {
-    std::memcpy(buffer + INDEX_OF(x, y + y_loop), digit_sprites[digit][y_loop],
-                DIGIT_WIDTH);
-  }
-}
-
-void draw_number(uint8_t *buffer, int x, int y, int number) {
-  if (number < 10) {
-    draw_digit(buffer, x, y, number);
-    return;
-  }
-
-  int divisor = 10000; // Max 16-bit power of 10
-  while (divisor > number) {
-    divisor /= 10;
-  }
-  int offset = 0;
-  do {
-    int digit = number / divisor;
-    draw_digit(buffer, x + offset, y, digit);
-    offset += DIGIT_SPACING;
-    number %= divisor;
-    divisor /= 10;
-  } while (divisor > 0);
 }
 
 enum State {
@@ -827,11 +889,12 @@ State update_play(GameData &g, MouseState const &mouse) {
   return is_out ? kLosing : kPlaying;
 }
 
-void render_play_back(uint8_t *buffer, GameData const &g, MouseState const&) {
+void render_play_back(uint8_t *buffer, GameData const &g, MouseState const &) {
   g.curr_effect(buffer);
 }
 
-void render_play_front(uint8_t *buffer, GameData const &g, MouseState const &mouse) {
+void render_play_front(uint8_t *buffer, GameData const &g,
+                       MouseState const &mouse) {
   draw_number(buffer, SCORE_X, SCORE_Y, g.score);
 
   // draw paddles
@@ -859,8 +922,8 @@ void render_play_front(uint8_t *buffer, GameData const &g, MouseState const &mou
 
   // Draw nebula
   for (int i = 0; i < NEBULA_PARTICLES; i++) {
-    int x = g.ball_x + g.nebula.r[i] * cosTable[g.nebula.phase[i]];
-    int y = g.ball_y + g.nebula.r[i] * sinTable[g.nebula.phase[i]];
+    int x = g.ball_x + g.nebula.r[i] * cos_table[g.nebula.phase[i]];
+    int y = g.ball_y + g.nebula.r[i] * sin_table[g.nebula.phase[i]];
 
     if (x >= 0 && x <= MAX_X && y >= 0 && y <= MAX_Y) {
       set_pixel(buffer, x, y, MAX_COLOR);
@@ -912,11 +975,6 @@ int main() {
 
   uint8_t *front_buffer, *back_buffer;
   init(front_buffer, back_buffer);
-
-  if (get_mode() != VGA_256_COLOR_MODE) {
-    std::cerr << "Unable to set 320x200x256 color mode\n";
-    std::exit(1);
-  }
 
   GameData g;
   MouseState mouse; // TODO: general input state?
