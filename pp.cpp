@@ -37,8 +37,8 @@ SOFTWARE.
 #include <iostream>
 #include <memory>
 
+#include "drawing.hpp"
 #include "palettes.hpp"
-#include "sprites.hpp"
 #include "system.hpp"
 
 using std::uint8_t;
@@ -61,8 +61,6 @@ using std::uint8_t;
 #define MAX_RAND_NUMS 1021
 
 // Graphics
-#define DIGIT_SPACING (DIGIT_WIDTH + 1)
-
 #define SCORE_X 10
 #define SCORE_Y 10
 
@@ -92,20 +90,7 @@ using std::uint8_t;
 #define RMB 2
 #define QUIT (LMB + RMB)
 
-// Graphics
-#define MAX_X (SCREEN_WIDTH - 1)
-#define MID_X (SCREEN_WIDTH >> 1)
-#define MAX_Y (SCREEN_HEIGHT - 1)
-#define MID_Y (SCREEN_HEIGHT >> 1)
-
-#define INDEX_OF(x, y) ((y)*SCREEN_WIDTH + (x))
-#define IS_ONSCREEN(x, y) ((x) >= 0 && (x) <= MAX_X && (y) >= 0 && (y) <= MAX_Y)
-
-#define MAX_COLOR (NUM_COLORS - 1)
-
 #define MAX_WEIGHT 12
-
-// Others
 #define NUM_ANGLES 256
 
 #define MOUSE_MARGIN ((PADDLE_MARGIN) + (HALF_PADDLE))
@@ -119,20 +104,6 @@ using std::uint8_t;
  * Helpers
  */
 
-#define assert_minmax(x, min, max)                                             \
-  assert((x) >= (min));                                                        \
-  assert((x) <= (max))
-
-#define assert_onscreen(x, y) assert(IS_ONSCREEN(x, y))
-
-template <typename T> inline T clamp(T const val, T const min, T const max) {
-  return std::min(max, std::max(min, val));
-}
-
-template <typename T> uint8_t clamp_color(T const color) {
-  return static_cast<uint8_t>(clamp<T>(color, 0, MAX_COLOR_COMPONENT));
-}
-
 void get_scaled_mouse_state(MouseState &mouse) {
   get_mouse_state(mouse);
 
@@ -140,128 +111,6 @@ void get_scaled_mouse_state(MouseState &mouse) {
   mouse.y = mouse.y * MOUSE_Y_SCALE + MOUSE_MARGIN;
 
   assert_onscreen(mouse.x, mouse.y);
-}
-
-/*
- * Graphics routines
- */
-
-inline void set_pixel(uint8_t *const buffer, int const x, int const y,
-                      uint8_t const color) {
-  assert_onscreen(x, y);
-
-  buffer[INDEX_OF(x, y)] = color;
-}
-
-inline void set_pixel_clipped(uint8_t *const buffer, int const x, int const y,
-                              uint8_t const color) {
-  if (IS_ONSCREEN(x, y))
-    set_pixel(buffer, x, y, color);
-}
-
-inline void set_pixels(uint8_t *const buffer, int const x, int const y,
-                       uint8_t const color, int const size) {
-  assert_onscreen(x, y);
-  assert_minmax(size, 0, MAX_X - x + 1);
-
-  if (size > 1) {
-    std::memset(buffer + INDEX_OF(x, y), color, size);
-  } else if (size == 1) {
-    // TODO: on old hardware, it might be better to unroll this for small sizes
-    // > 1
-    set_pixel(buffer, x, y, color);
-  }
-}
-
-inline void set_pixels_clipped(uint8_t *const buffer, int x, int y,
-                               uint8_t const color, int size) {
-  x = clamp(x, 0, MAX_X);
-  y = clamp(y, 0, MAX_Y);
-  size = clamp(size, 0, MAX_X - x + 1);
-
-  set_pixels(buffer, x, y, color, size);
-}
-
-void line(uint8_t *const buffer, int const x1, int const y1, int const x2,
-          int const y2, uint8_t const color) {
-  int x = x1;
-  int y = y1;
-
-  if (y1 == y2) {
-    if (x1 > x2)
-      x = x2;
-    set_pixels_clipped(buffer, x, y, color, std::abs(x2 - x1) + 1);
-    return;
-  }
-
-  int const xinc = (x1 > x2) ? -1 : 1;
-  int const dx = std::abs(x2 - x1);
-
-  int const yinc = (y1 > y2) ? -1 : 1;
-  int const dy = std::abs(y2 - y1);
-
-  int const two_dx = dx + dx;
-  int const two_dy = dy + dy;
-
-  int error = 0;
-
-  if (dx > dy) {
-    error = 0;
-    for (int i = 0; i < dx; i++) {
-      set_pixel_clipped(buffer, x, y, color);
-      x += xinc;
-      error += two_dy;
-      if (error > dx) {
-        error -= two_dx;
-        y += yinc;
-      }
-    }
-  } else {
-    error = 0;
-    for (int i = 0; i < dy; i++) {
-      set_pixel_clipped(buffer, x, y, color);
-      y += yinc;
-      error += two_dx;
-      if (error > dy) {
-        error -= two_dy;
-        x += xinc;
-      }
-    }
-  }
-}
-
-inline void draw_digit(uint8_t *buffer, int const x, int const y,
-                       int const digit) {
-  for (int y_loop = 0; y_loop < DIGIT_HEIGHT; y_loop++) {
-    std::memcpy(buffer + INDEX_OF(x, y + y_loop), digit_sprites[digit][y_loop],
-                DIGIT_WIDTH);
-  }
-}
-
-void draw_number(uint8_t *const buffer, int x, int const y, int number) {
-  if (number < 0) {
-    // TODO: ascii table (maybe I should use cogp47?)
-    int const dash_y = y + (DIGIT_HEIGHT >> 1);
-    line(buffer, x, dash_y, x + 4, dash_y, MAX_COLOR);
-    number *= -1;
-    x += 5;
-  }
-
-  if (number < 10) {
-    draw_digit(buffer, x, y, number);
-    return;
-  }
-
-  int divisor = 10000; // Max 16-bit power of 10
-  while (divisor > number) {
-    divisor /= 10;
-  }
-  do {
-    draw_digit(buffer, x, y, number / divisor);
-    x += DIGIT_SPACING;
-    number %= divisor;
-    divisor /= 10;
-  } while (divisor > 0);
 }
 
 /*
@@ -462,6 +311,7 @@ void init(uint8_t *&front_buffer, uint8_t *&back_buffer) {
   fill_targets();
   fill_weighted_averages();
 
+  // TODO: seed with time or a specified value
   std::srand(15);
   init_rnd();
 }
