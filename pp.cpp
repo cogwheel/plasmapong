@@ -361,11 +361,11 @@ static int const NUM_PALETTES = sizeof(pal_table) / sizeof(PaletteDef);
   assert_minmax((x), 0, MAX_X);                                                \
   assert_minmax((y), 0, MAX_Y)
 
-template <typename T> inline T clamp(T val, T min, T max) {
+template <typename T> inline T clamp(T const val, T const min, T const max) {
   return std::min(max, std::max(min, val));
 }
 
-template <typename T> uint8_t clamp_color(T color) {
+template <typename T> uint8_t clamp_color(T const color) {
   return static_cast<uint8_t>(clamp<T>(color, 0, MAX_COLOR_COMPONENT));
 }
 
@@ -384,9 +384,8 @@ uint8_t get_mode() {
   return regs.h.al;
 }
 
-void set_mode(uint8_t mode) {
+void set_mode(uint8_t const mode) {
   REGS regs;
-
   regs.h.ah = SET_MODE;
   regs.h.al = mode;
   int86(VIDEO_INT, &regs, &regs);
@@ -401,8 +400,11 @@ inline void show_buffer(uint8_t *const front_buffer) {
   std::memcpy(VGA, front_buffer, SCREEN_SIZE);
 }
 
-inline void set_pal_entry(uint8_t index, uint8_t red, uint8_t green,
-                          uint8_t blue) {
+inline void set_pal_entry(uint8_t const index, uint8_t const red,
+                          uint8_t const green, uint8_t const blue) {
+  assert(red <= MAX_COLOR_COMPONENT);
+  assert(green <= MAX_COLOR_COMPONENT);
+
   outp(PALETTE_MASK, 0xff);
   outp(PALETTE_REGISTER_WRITE, index); // tell it what index to use (0-255)
   outp(PALETTE_DATA, red);             // enter the red
@@ -435,20 +437,23 @@ void get_mouse_state(MouseState &mouse) {
  * Graphics routines
  */
 
-inline void set_pixel(uint8_t *buffer, int x, int y, uint8_t color) {
+inline void set_pixel(uint8_t *const buffer, int const x, int const y,
+                      uint8_t const color) {
   assert_onscreen(x, y);
 
   buffer[INDEX_OF(x, y)] = color;
 }
 
-inline void set_pixel_clipped(uint8_t *buffer, int x, int y, uint8_t color) {
+inline void set_pixel_clipped(uint8_t *const buffer, int const x, int const y,
+                              uint8_t const color) {
   if (x < 0 || x > MAX_X || y < 0 || y > MAX_Y)
     return;
 
   set_pixel(buffer, x, y, color);
 }
 
-inline void set_pixels(uint8_t *buffer, int x, int y, uint8_t color, int size) {
+inline void set_pixels(uint8_t *const buffer, int const x, int const y,
+                       uint8_t const color, int const size) {
   if (size == 0)
     return;
 
@@ -463,8 +468,8 @@ inline void set_pixels(uint8_t *buffer, int x, int y, uint8_t color, int size) {
   std::memset(buffer + INDEX_OF(x, y), color, size);
 }
 
-inline void set_pixels_clipped(uint8_t *buffer, int x, int y, uint8_t color,
-                               int size) {
+inline void set_pixels_clipped(uint8_t *const buffer, int x, int y,
+                               uint8_t const color, int size) {
   x = clamp(x, 0, MAX_X);
   y = clamp(y, 0, MAX_Y);
   size = clamp(size, 0, MAX_X - x);
@@ -472,36 +477,31 @@ inline void set_pixels_clipped(uint8_t *buffer, int x, int y, uint8_t color,
   set_pixels(buffer, x, y, color, size);
 }
 
-void line(uint8_t *buffer, int x1, int y1, int x2, int y2, uint8_t color) {
-  int dx, dy, xinc, yinc, two_dx, two_dy, x = x1, y = y1, i, error;
+void line(uint8_t *const buffer, int const x1, int const y1, int const x2,
+          int const y2, uint8_t const color) {
+  int x = x1, y = y1;
 
   if (y1 == y2) {
-    if (x2 < x1)
-      std::swap(x1, x2);
-    set_pixels_clipped(buffer, x1, y1, color, x2 - x1 + 1);
+    if (x1 > x2)
+      x = x2;
+    set_pixels_clipped(buffer, x, y, color, std::abs(x2 - x1) + 1);
     return;
   }
 
-  dx = (x2 - x1);
-  if (dx < 0) {
-    dx = -dx;
-    xinc = -1;
-  } else
-    xinc = 1;
+  int const xinc = (x1 > x2) ? -1 : 1;
+  int const dx = std::abs(x2 - x1);
 
-  dy = (y2 - y1);
-  if (dy < 0) {
-    dy = -dy;
-    yinc = -1;
-  } else
-    yinc = 1;
+  int const yinc = (y1 > y2) ? -1 : 1;
+  int const dy = std::abs(y2 - y1);
 
-  two_dx = dx + dx;
-  two_dy = dy + dy;
+  int const two_dx = dx + dx;
+  int const two_dy = dy + dy;
+
+  int error = 0;
 
   if (dx > dy) {
     error = 0;
-    for (i = 0; i < dx; i++) {
+    for (int i = 0; i < dx; i++) {
       set_pixel_clipped(buffer, x, y, color);
       x += xinc;
       error += two_dy;
@@ -512,7 +512,7 @@ void line(uint8_t *buffer, int x1, int y1, int x2, int y2, uint8_t color) {
     }
   } else {
     error = 0;
-    for (i = 0; i < dy; i++) {
+    for (int i = 0; i < dy; i++) {
       set_pixel_clipped(buffer, x, y, color);
       y += yinc;
       error += two_dx;
@@ -601,12 +601,12 @@ void fill_targets() {
   }
 }
 
-short weighted_averages[MAX_WEIGHT * MAX_COLOR];
+uint8_t weighted_averages[MAX_WEIGHT * MAX_COLOR];
 
 void fill_weighted_averages() {
   for (int i = 0; i < (MAX_WEIGHT * MAX_COLOR); i++) {
     // TODO: DIM_AMOUNT should be subtracted instead of divided maybe?
-    weighted_averages[i] = i / (MAX_WEIGHT + DIM_AMOUNT);
+    weighted_averages[i] = static_cast<uint8_t>(i / (MAX_WEIGHT + DIM_AMOUNT));
   }
 }
 
@@ -614,12 +614,13 @@ void fill_weighted_averages() {
  * Background effects
  */
 
-typedef void (*EffectFunc)(uint8_t *);
+typedef void (*EffectFunc)(uint8_t *const);
 
-void none(uint8_t *) {}
+void none(uint8_t *const) {}
 
-void wave_effect(uint8_t *buffer) {
+void wave_effect(uint8_t *const buffer) {
   int vertices[11];
+  // TODO single loop
   for (int i = 0; i <= 10; i++) {
     vertices[i] = get_rnd() % 60 + 60;
   }
@@ -628,10 +629,11 @@ void wave_effect(uint8_t *buffer) {
   }
 }
 
-void dot_effect(uint8_t *buffer) {
+void dot_effect(uint8_t *const buffer) {
   for (int i = 0; i < 8; i++) {
-    int drop_x = get_rnd() % (SCREEN_WIDTH - 3),
-        drop_y = get_rnd() % (SCREEN_HEIGHT - 3);
+    // TODO: single declaration per line
+    int const drop_x = get_rnd() % (SCREEN_WIDTH - 3),
+              drop_y = get_rnd() % (SCREEN_HEIGHT - 3);
     // top-mid
     set_pixel(buffer, drop_x + 1, drop_y, MAX_COLOR);
 
@@ -643,7 +645,7 @@ void dot_effect(uint8_t *buffer) {
   }
 }
 
-void line_effect(uint8_t *buffer) {
+void line_effect(uint8_t *const buffer) {
   line(buffer, get_rnd() % SCREEN_WIDTH, get_rnd() % SCREEN_HEIGHT,
        get_rnd() % SCREEN_WIDTH, get_rnd() % SCREEN_HEIGHT,
        static_cast<uint8_t>(get_rnd() % NUM_COLORS));
@@ -657,25 +659,24 @@ static int const NUM_EFFECTS = sizeof(effects) / sizeof(EffectFunc);
 inline EffectFunc choose_effect() { return effects[get_rnd() % NUM_EFFECTS]; }
 
 void set_palette(PaletteDef const &pal_data, bool &is_noisy) {
-  float red_inc, green_inc, blue_inc, difference, working_red, working_green,
-      working_blue, red_end, green_end, blue_end;
+  is_noisy = pal_data.is_noisy;
 
   // TODO: maybe precalculate the palettes
   for (int i = 0; i <= pal_data.num_ranges; ++i) {
     PaletteRange const &range = pal_data.ranges[i];
-    difference = range.last_index - range.first_index;
+    float const difference = range.last_index - range.first_index;
 
-    working_red = std::pow(range.first_color.r, GAMMA);
-    working_green = std::pow(range.first_color.g, GAMMA);
-    working_blue = std::pow(range.first_color.b, GAMMA);
+    float working_red = std::pow(range.first_color.r, GAMMA);
+    float working_green = std::pow(range.first_color.g, GAMMA);
+    float working_blue = std::pow(range.first_color.b, GAMMA);
 
-    red_end = std::pow(range.last_color.r, GAMMA);
-    green_end = std::pow(range.last_color.g, GAMMA);
-    blue_end = std::pow(range.last_color.b, GAMMA);
+    float const red_end = std::pow(range.last_color.r, GAMMA);
+    float const green_end = std::pow(range.last_color.g, GAMMA);
+    float const blue_end = std::pow(range.last_color.b, GAMMA);
 
-    red_inc = (red_end - working_red) / difference;
-    green_inc = (green_end - working_green) / difference;
-    blue_inc = (blue_end - working_blue) / difference;
+    float const red_inc = (red_end - working_red) / difference;
+    float const green_inc = (green_end - working_green) / difference;
+    float const blue_inc = (blue_end - working_blue) / difference;
 
     for (int j = range.first_index; j <= range.last_index; j++) {
       set_pal_entry(static_cast<uint8_t>(j),
@@ -688,13 +689,10 @@ void set_palette(PaletteDef const &pal_data, bool &is_noisy) {
       working_blue = clamp(working_blue + blue_inc, 0.f, FLT_MAX);
     }
   }
-
-  is_noisy = pal_data.is_noisy;
 }
 
-void blur(uint8_t *front_buffer, uint8_t *back_buffer, bool is_noisy) {
-  /*   int rand_x=0, rand_y=0;
-  rand_x=rand()%4-2; rand_y=rand()%4-2; */
+void blur(uint8_t *const front_buffer, uint8_t *const back_buffer,
+          bool const is_noisy) {
   for (int y = 0; y < SCREEN_HEIGHT; y++) {
     for (int x = 0; x < SCREEN_WIDTH; x++) {
 
@@ -922,12 +920,9 @@ void render_play_front(uint8_t *buffer, GameData const &g,
 
   // Draw nebula
   for (int i = 0; i < NEBULA_PARTICLES; i++) {
-    int x = g.ball_x + g.nebula.r[i] * cos_table[g.nebula.phase[i]];
-    int y = g.ball_y + g.nebula.r[i] * sin_table[g.nebula.phase[i]];
-
-    if (x >= 0 && x <= MAX_X && y >= 0 && y <= MAX_Y) {
-      set_pixel(buffer, x, y, MAX_COLOR);
-    }
+    int const x = g.ball_x + g.nebula.r[i] * cos_table[g.nebula.phase[i]];
+    int const y = g.ball_y + g.nebula.r[i] * sin_table[g.nebula.phase[i]];
+    set_pixel_clipped(buffer, x, y, MAX_COLOR);
   }
 }
 
@@ -971,7 +966,7 @@ static const StateEntry state_table[kNumStates] = {
 };
 
 int main() {
-  uint8_t old_mode = get_mode();
+  uint8_t const old_mode = get_mode();
 
   uint8_t *front_buffer, *back_buffer;
   init(front_buffer, back_buffer);
@@ -983,7 +978,7 @@ int main() {
   enter_play(g, mouse);
 
   for (get_mouse_state(mouse); mouse.buttons != QUIT; get_mouse_state(mouse)) {
-    State new_state = state_table[state].update(g, mouse);
+    State const new_state = state_table[state].update(g, mouse);
 
     if (new_state != state) {
       state = new_state;
