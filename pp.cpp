@@ -134,6 +134,7 @@ using std::uint8_t;
 #define SCREEN_SIZE (SCREEN_WIDTH * SCREEN_HEIGHT)
 
 #define INDEX_OF(x, y) ((y)*SCREEN_WIDTH + (x))
+#define IS_ONSCREEN(x, y) ((x) >= 0 && (x) <= MAX_X && (y) >= 0 && (y) <= MAX_Y)
 
 #define NUM_COLORS 256 // number of colors in mode 0x13
 #define MAX_COLOR (NUM_COLORS - 1)
@@ -366,8 +367,7 @@ static int const NUM_PALETTES = sizeof(pal_table) / sizeof(PaletteDef);
   assert((x) <= (max))
 
 #define assert_onscreen(x, y)                                                  \
-  assert_minmax((x), 0, MAX_X);                                                \
-  assert_minmax((y), 0, MAX_Y)
+  assert(IS_ONSCREEN(x, y))
 
 template <typename T> inline T clamp(T const val, T const min, T const max) {
   return std::min(max, std::max(min, val));
@@ -463,33 +463,28 @@ inline void set_pixel(uint8_t *const buffer, int const x, int const y,
 
 inline void set_pixel_clipped(uint8_t *const buffer, int const x, int const y,
                               uint8_t const color) {
-  if (x < 0 || x > MAX_X || y < 0 || y > MAX_Y)
-    return;
-
-  set_pixel(buffer, x, y, color);
+  if (IS_ONSCREEN(x, y))
+    set_pixel(buffer, x, y, color);
 }
 
 inline void set_pixels(uint8_t *const buffer, int const x, int const y,
                        uint8_t const color, int const size) {
-  if (size == 0)
-    return;
-
   assert_onscreen(x, y);
-  assert_minmax(x + size - 1, 0, MAX_X);
+  assert_minmax(size, 0, MAX_X - x + 1);
 
-  if (size == 1) {
+  if (size > 1) {
+    std::memset(buffer + INDEX_OF(x, y), color, size);
+  } else if (size == 1) {
+    // TODO: on old hardware, it might be better to unroll this for small sizes > 1
     set_pixel(buffer, x, y, color);
-    return;
   }
-
-  std::memset(buffer + INDEX_OF(x, y), color, size);
 }
 
 inline void set_pixels_clipped(uint8_t *const buffer, int x, int y,
                                uint8_t const color, int size) {
   x = clamp(x, 0, MAX_X);
   y = clamp(y, 0, MAX_Y);
-  size = clamp(size, 0, MAX_X - x);
+  size = clamp(size, 0, MAX_X - x + 1);
 
   set_pixels(buffer, x, y, color, size);
 }
