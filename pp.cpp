@@ -65,6 +65,7 @@ using std::uint8_t;
 #define HALF_PADDLE 16
 
 #define NEBULA_PARTICLES 25
+#define WAVE_SEGMENTS 10
 
 #define DIM_AMOUNT 0.2
 #define GAMMA ((float)2.2)
@@ -619,13 +620,13 @@ typedef void (*EffectFunc)(uint8_t *const);
 void none(uint8_t *const) {}
 
 void wave_effect(uint8_t *const buffer) {
-  int vertices[11];
-  // TODO single loop
-  for (int i = 0; i <= 10; i++) {
-    vertices[i] = get_rnd() % 60 + 60;
-  }
-  for (int i = 0; i < 10; i++) {
-    line(buffer, i * 32, vertices[i], i * 32 + 32, vertices[i + 1], 128);
+  int y1 = get_rnd() % 60 + 60;
+  int const dx = SCREEN_WIDTH / WAVE_SEGMENTS;
+
+  for (int i = 0; i <= WAVE_SEGMENTS; i++) {
+    int const y2 = get_rnd() % 60 + 60;
+    line(buffer, i * dx, y1, i * dx + dx, y2, 128);
+    y1 = y2;
   }
 }
 
