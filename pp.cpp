@@ -107,6 +107,7 @@ using std::uint8_t;
 #define VGA_256_COLOR_MODE 0x13 // use to set 256-color mode.
 
 #define MOUSE_INT 0x33
+#define MOUSE_SETUP 0x0
 #define MOUSE_STATUS 0x3
 #define LMB 1
 #define RMB 2
@@ -417,6 +418,13 @@ inline void set_pal_entry(uint8_t const index, uint8_t const red,
   outp(PALETTE_DATA, red);             // enter the red
   outp(PALETTE_DATA, green);           // green
   outp(PALETTE_DATA, blue);            // blue
+}
+
+bool has_mouse() {
+  REGS regs;
+  regs.x.ax = MOUSE_SETUP;
+  int86(MOUSE_INT, &regs, &regs);
+  return static_cast<bool>(regs.x.ax);
 }
 
 struct MouseState {
@@ -731,17 +739,22 @@ void blur(uint8_t *const front_buffer, uint8_t *const back_buffer,
 void init(uint8_t *&front_buffer, uint8_t *&back_buffer) {
   // allocate mem for the front_buffer
   if ((front_buffer = new uint8_t[SCREEN_SIZE]) == NULL) {
-    std::cout << "Not enough memory for front buffer.\n";
+    std::cerr << "Not enough memory for front buffer.\n";
     std::exit(1);
   }
 
   if ((back_buffer = new uint8_t[SCREEN_SIZE]) == NULL) {
-    std::cout << "Not enough memory for back buffer.\n";
+    std::cerr << "Not enough memory for back buffer.\n";
     std::exit(1);
   }
 
   std::memset(front_buffer, 0, SCREEN_SIZE);
   std::memset(back_buffer, 0, SCREEN_SIZE);
+
+  if (!has_mouse()) {
+    std::cerr << "PlasmaPong requires a mouse.\n";
+    std::exit(1);
+  }
 
   set_mode(VGA_256_COLOR_MODE);
 
