@@ -545,6 +545,14 @@ inline void draw_digit(uint8_t *buffer, int const x, int const y, int const digi
 }
 
 void draw_number(uint8_t * const buffer, int x, int const y, int number) {
+  if (number < 0) {
+    // TODO: ascii table (maybe I should use cogp47?)
+    int const dash_y = y + (DIGIT_HEIGHT >> 1);
+    line(buffer, x, dash_y, x + 4, dash_y, MAX_COLOR);
+    number *= -1;
+    x += 5;
+  }
+
   if (number < 10) {
     draw_digit(buffer, x, y, number);
     return;
