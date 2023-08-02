@@ -22,12 +22,18 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 */
 
-#include <algorith>
+/*
+ * Note: Watcom uses 8-character filenames and just truncates what you write in
+ * the source. The shortened names are used here in order for clangd to work.
+ */
+
+#include <algorith>  // <algorithm>
 #include <cassert>
 #include <cfloat>
 #include <cmath>
 #include <cstdint>
 #include <cstdlib>
+#include <cstring>
 #include <iostream>
 #include <memory>
 
