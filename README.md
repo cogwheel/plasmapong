@@ -23,11 +23,18 @@ My attempt to clean up an ancient DOS game a friend and I made in high school.
 
 ## Building
 
-Currently using [OpenWactom 1.9](http://openwatcom.org/ftp/install/). Will likely switch to [version 2](https://github.com/open-watcom/open-watcom-v2) soon.
+Currently using [OpenWactom 2](https://github.com/open-watcom/open-watcom-v2).
+
+For an optimized release build:
 
 ```
-> wcl -ml -wx -we pp.cpp
+> wcl -q -mc -wx -we -ox -5 -fp5 -fpi87 -DNDEBUG pp.cpp
 ```
+
+This game was originally developed on a Pentium MMX 233, hence the `-5 -fp5 -fpi87` options.
+
+For debug builds, add one of the [debug symbol options](https://open-watcom.github.io/open-watcom-v2-wikidocs/cguide.html#DebuggingDProfiling), and remove one or both of `-ox` and `-DNDEBUG`.
+
 
 TODO:
 
