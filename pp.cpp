@@ -27,7 +27,7 @@ SOFTWARE.
  * the source. The shortened names are used here in order for clangd to work.
  */
 
-#include <algorith>  // <algorithm>
+#include <algorith> // <algorithm>
 #include <cassert>
 #include <cfloat>
 #include <cmath>
@@ -37,8 +37,9 @@ SOFTWARE.
 #include <iostream>
 #include <memory>
 
-#include <conio.h>
-#include <dos.h>
+#include "drawing.hpp"
+#include "palettes.hpp"
+#include "system.hpp"
 
 using std::uint8_t;
 
@@ -59,6 +60,8 @@ using std::uint8_t;
 
 #define MAX_RAND_NUMS 1021
 
+#define QUIT (LMB + RMB)
+
 // Graphics
 #define SCORE_X 10
 #define SCORE_Y 10
@@ -77,20 +80,6 @@ using std::uint8_t;
 #define GAMMA ((float)2.2)
 
 /*
- * Data constants
- *
- * These are characteristics of the sprite and palette data that will eventually
- * be read from a file
- */
-
-#define DIGIT_WIDTH 5
-#define DIGIT_HEIGHT 7
-#define DIGIT_SIZE (DIGIT_WIDTH * DIGIT_HEIGHT)
-#define DIGIT_SPACING 7
-
-#define MAX_PALETTE_RANGES 8
-
-/*
  * Defined constants
  *
  * Changing these values would require code changes, name changes, or
@@ -99,50 +88,7 @@ using std::uint8_t;
 
 #define TAU 6.2831853071795864
 
-// System
-#define VIDEO_INT 0x10          // the BIOS video interrupt.
-#define WRITE_DOT 0x0C          // BIOS func to plot a pixel.
-#define SET_MODE 0x00           // BIOS func to set the video mode.
-#define GET_MODE 0x0F           // BIOS func to get the video mode.
-#define VGA_256_COLOR_MODE 0x13 // use to set 256-color mode.
-
-#define MOUSE_INT 0x33
-#define MOUSE_SETUP 0x0
-#define MOUSE_STATUS 0x3
-#define LMB 1
-#define RMB 2
-#define QUIT (LMB + RMB)
-
-#define DISPLAY_ENABLE 0x01 // VGA input status bits
-#define INPUT_STATUS 0x03da
-#define VRETRACE 0x08
-
-#define PALETTE_MASK 0x03c6
-#define PALETTE_REGISTER_READ 0x03c7
-#define PALETTE_REGISTER_WRITE 0x03c8
-#define PALETTE_DATA 0x03c9
-
-// Graphics
-#define SCREEN_WIDTH 320 // width in pixels of mode 0x13
-#define MAX_X (SCREEN_WIDTH - 1)
-#define MID_X (SCREEN_WIDTH >> 1)
-
-#define SCREEN_HEIGHT 200 // height in pixels of mode 0x13
-#define MAX_Y (SCREEN_HEIGHT - 1)
-#define MID_Y (SCREEN_HEIGHT >> 1)
-
-#define SCREEN_SIZE (SCREEN_WIDTH * SCREEN_HEIGHT)
-
-#define INDEX_OF(x, y) ((y)*SCREEN_WIDTH + (x))
-#define IS_ONSCREEN(x, y) ((x) >= 0 && (x) <= MAX_X && (y) >= 0 && (y) <= MAX_Y)
-
-#define NUM_COLORS 256 // number of colors in mode 0x13
-#define MAX_COLOR (NUM_COLORS - 1)
-#define MAX_COLOR_COMPONENT 63 // RGB components in the palette
-
 #define MAX_WEIGHT 12
-
-// Others
 #define NUM_ANGLES 256
 
 #define MOUSE_MARGIN ((PADDLE_MARGIN) + (HALF_PADDLE))
@@ -151,424 +97,6 @@ using std::uint8_t;
 
 #define MOUSE_X_SCALE (float(MOUSE_X_RANGE) / (SCREEN_WIDTH))
 #define MOUSE_Y_SCALE (float(MOUSE_Y_RANGE) / (SCREEN_HEIGHT))
-
-/*
- * Graphics data
- */
-
-// clang-format off
-uint8_t const digit_sprites[10][DIGIT_HEIGHT][DIGIT_WIDTH] = {
-  { 0, 255, 255, 255, 0,
-    255, 0, 0, 0, 255,
-    255, 0, 0, 0, 255,
-    255, 0, 0, 0, 255,
-    255, 0, 0, 0, 255,
-    255, 0, 0, 0, 255,
-    0, 255, 255, 255, 0 },
-
-  { 0, 255, 255, 0, 0,
-    0, 0, 255, 0, 0,
-    0, 0, 255, 0, 0,
-    0, 0, 255, 0, 0,
-    0, 0, 255, 0, 0,
-    0, 0, 255, 0, 0,
-    0, 255, 255, 255, 0 },
-
-  { 0, 255, 255, 255, 0,
-    255, 0, 0, 0, 255,
-    0, 0, 0, 0, 255,
-    0, 0, 255, 255, 0,
-    0, 255, 0, 0, 0,
-    255, 0, 0, 0, 0,
-    255, 255, 255, 255, 255 },
-
-  { 0, 255, 255, 255, 0,
-    255, 0, 0, 0, 255,
-    0, 0, 0, 0, 255,
-    0, 0, 255, 255, 0,
-    0, 0, 0, 0, 255,
-    255, 0, 0, 0, 255,
-    0, 255, 255, 255, 0 },
-
-  { 255, 0, 0, 255, 0,
-    255, 0, 0, 255, 0,
-    255, 0, 0, 255, 0,
-    255, 0, 0, 255, 0,
-    255, 255, 255, 255, 255,
-    0, 0, 0, 255, 0,
-    0, 0, 0, 255, 0 },
-
-  { 255, 255, 255, 255, 255,
-    255, 0, 0, 0, 0,
-    255, 0, 0, 0, 0,
-    255, 255, 255, 255, 0,
-    0, 0, 0, 0, 255,
-    255, 0, 0, 0, 255,
-    0, 255, 255, 255, 0 },
-
-  { 0, 255, 255, 255, 0,
-    255, 0, 0, 0, 255,
-    255, 0, 0, 0, 0,
-    255, 255, 255, 255, 0,
-    255, 0, 0, 0, 255,
-    255, 0, 0, 0, 255,
-    0, 255, 255, 255, 0 },
-
-  { 255, 255, 255, 255, 255,
-    0, 0, 0, 0, 255,
-    0, 0, 0, 255, 0,
-    0, 0, 255, 0, 0,
-    0, 0, 255, 0, 0,
-    0, 0, 255, 0, 0,
-    0, 0, 255, 0, 0 },
-
-  { 0, 255, 255, 255, 0,
-    255, 0, 0, 0, 255,
-    255, 0, 0, 0, 255,
-    0, 255, 255, 255, 0,
-    255, 0, 0, 0, 255,
-    255, 0, 0, 0, 255,
-    0, 255, 255, 255, 0 },
-
-  { 0, 255, 255, 255, 0,
-    255, 0, 0, 0, 255,
-    255, 0, 0, 0, 255,
-    0, 255, 255, 255, 255,
-    0, 0, 0, 0, 255,
-    255, 0, 0, 0, 255,
-    0, 255, 255, 255, 0 }
-};
-// clang-format on
-
-struct PaletteColor {
-  uint8_t r;
-  uint8_t g;
-  uint8_t b;
-};
-
-// TODO: Remove need to specify both start and end for each entry
-struct PaletteRange {
-  uint8_t first_index;
-  uint8_t last_index;
-  PaletteColor first_color;
-  PaletteColor last_color;
-};
-
-// TODO: read these from a file
-struct PaletteDef {
-  // using the old static-sized approach since C++98 doesn't have initializer
-  // lists
-  int num_ranges;
-  bool is_noisy;
-  PaletteRange ranges[MAX_PALETTE_RANGES];
-};
-
-// clang-format off
-static PaletteDef const pal_table[] = {
-  { 5, true, {
-    { 0, 31,
-      {0,   0,   0},
-      {0,   0,  63},
-    },
-    {32,  63,
-      {0,   0,  63},
-      {0,   0,   0},
-    },
-    {64,  95,
-      {0,   0,   0},
-      {63,   0,   0},
-    },
-    {96, 127,
-      {63,   0,   0},
-      {0,   0,   0},
-    },
-    {128, 255,
-      {0,   0,   0},
-      {63,  63,   0},
-    },
-  }},
-  { 5, true, {
-    {0,  31,
-      {0,   0,   0},
-      {21,   39,  23},
-    },
-    {32,  63,
-      {21,   39,  23},
-      {63,   19,   0},
-    },
-    {64,  95,
-      {63,   19,   0},
-      {32,   33,   27},
-    },
-    {96, 127,
-      {32,   33,   27},
-      {26,   5,   18},
-    },
-    {128, 255,
-      {26,   5,   18},
-      {63,  63,   0},
-    },
-  }},
-  { 5, true, {
-    {0,  31,
-      {0,   0,   0},
-      {21,   33,  40},
-    },
-    {32,  63,
-      {21,   33,  40},
-      {12,   12,   20},
-    },
-    {64,  110,
-      {12,   12,   20},
-      {43,   33,   38},
-    },
-    {111, 127,
-      {43,   33,   38},
-      {63,   17,   3},
-    },
-    {128, 255,
-      {63,   17,   3},
-      {54,  46,   30},
-    },
-  }},
-  { 5, false, {
-    {0,  31,
-      {0,   0,   0},
-      {57,   57,  63},
-    },
-    {32,  63,
-      {57,   57,  63},
-      {0,   0,   0},
-    },
-    {64,  110,
-      {0,   0,   0},
-      {63,   63,   63},
-    },
-    {111, 127,
-      {63,   63,   63},
-      {0,   0,   0},
-    },
-    {128, 255,
-      {0,   0,   0},
-      {63,  63,   63},
-    },
-  }}
-};
-// clang-format on
-
-static int const NUM_PALETTES = sizeof(pal_table) / sizeof(PaletteDef);
-
-/*
- * Helpers
- */
-
-#define assert_minmax(x, min, max)                                             \
-  assert((x) >= (min));                                                        \
-  assert((x) <= (max))
-
-#define assert_onscreen(x, y)                                                  \
-  assert(IS_ONSCREEN(x, y))
-
-template <typename T> inline T clamp(T const val, T const min, T const max) {
-  return std::min(max, std::max(min, val));
-}
-
-template <typename T> uint8_t clamp_color(T const color) {
-  return static_cast<uint8_t>(clamp<T>(color, 0, MAX_COLOR_COMPONENT));
-}
-
-/*
- * System interface
- *
- * DOS/PC-specific functionality
- */
-
-static uint8_t *const VGA = (uint8_t *)0xA0000000L; // location of video memory
-
-uint8_t get_mode() {
-  REGS regs;
-  regs.h.ah = GET_MODE;
-  int86(VIDEO_INT, &regs, &regs);
-  return regs.h.al;
-}
-
-void set_mode(uint8_t const mode) {
-  REGS regs;
-  regs.h.ah = SET_MODE;
-  regs.h.al = mode;
-  int86(VIDEO_INT, &regs, &regs);
-}
-
-inline void show_buffer(uint8_t *const front_buffer) {
-  while ((inp(INPUT_STATUS) & VRETRACE))
-    ;
-  while (!(inp(INPUT_STATUS) & VRETRACE))
-    ;
-
-  std::memcpy(VGA, front_buffer, SCREEN_SIZE);
-}
-
-inline void set_pal_entry(uint8_t const index, uint8_t const red,
-                          uint8_t const green, uint8_t const blue) {
-  assert(red <= MAX_COLOR_COMPONENT);
-  assert(green <= MAX_COLOR_COMPONENT);
-
-  outp(PALETTE_MASK, 0xff);
-  outp(PALETTE_REGISTER_WRITE, index); // tell it what index to use (0-255)
-  outp(PALETTE_DATA, red);             // enter the red
-  outp(PALETTE_DATA, green);           // green
-  outp(PALETTE_DATA, blue);            // blue
-}
-
-bool has_mouse() {
-  REGS regs;
-  regs.x.ax = MOUSE_SETUP;
-  int86(MOUSE_INT, &regs, &regs);
-  return static_cast<bool>(regs.x.ax);
-}
-
-struct MouseState {
-  int x;
-  int y;
-  int buttons;
-};
-
-void get_mouse_state(MouseState &mouse) {
-  REGS regs;
-  regs.x.ax = MOUSE_STATUS;
-  int86(MOUSE_INT, &regs, &regs);
-
-  // DOS doubles the X coord at 320 SCREEN_WIDTH
-  int const raw_x = regs.x.cx >> 1;
-  int const raw_y = regs.x.dx;
-
-  mouse.x = raw_x * MOUSE_X_SCALE + MOUSE_MARGIN;
-  mouse.y = raw_y * MOUSE_Y_SCALE + MOUSE_MARGIN;
-
-  assert_onscreen(mouse.x, mouse.y);
-
-  mouse.buttons = regs.x.bx;
-}
-
-/*
- * Graphics routines
- */
-
-inline void set_pixel(uint8_t *const buffer, int const x, int const y,
-                      uint8_t const color) {
-  assert_onscreen(x, y);
-
-  buffer[INDEX_OF(x, y)] = color;
-}
-
-inline void set_pixel_clipped(uint8_t *const buffer, int const x, int const y,
-                              uint8_t const color) {
-  if (IS_ONSCREEN(x, y))
-    set_pixel(buffer, x, y, color);
-}
-
-inline void set_pixels(uint8_t *const buffer, int const x, int const y,
-                       uint8_t const color, int const size) {
-  assert_onscreen(x, y);
-  assert_minmax(size, 0, MAX_X - x + 1);
-
-  if (size > 1) {
-    std::memset(buffer + INDEX_OF(x, y), color, size);
-  } else if (size == 1) {
-    // TODO: on old hardware, it might be better to unroll this for small sizes > 1
-    set_pixel(buffer, x, y, color);
-  }
-}
-
-inline void set_pixels_clipped(uint8_t *const buffer, int x, int y,
-                               uint8_t const color, int size) {
-  x = clamp(x, 0, MAX_X);
-  y = clamp(y, 0, MAX_Y);
-  size = clamp(size, 0, MAX_X - x + 1);
-
-  set_pixels(buffer, x, y, color, size);
-}
-
-void line(uint8_t *const buffer, int const x1, int const y1, int const x2,
-          int const y2, uint8_t const color) {
-  int x = x1;
-  int y = y1;
-
-  if (y1 == y2) {
-    if (x1 > x2)
-      x = x2;
-    set_pixels_clipped(buffer, x, y, color, std::abs(x2 - x1) + 1);
-    return;
-  }
-
-  int const xinc = (x1 > x2) ? -1 : 1;
-  int const dx = std::abs(x2 - x1);
-
-  int const yinc = (y1 > y2) ? -1 : 1;
-  int const dy = std::abs(y2 - y1);
-
-  int const two_dx = dx + dx;
-  int const two_dy = dy + dy;
-
-  int error = 0;
-
-  if (dx > dy) {
-    error = 0;
-    for (int i = 0; i < dx; i++) {
-      set_pixel_clipped(buffer, x, y, color);
-      x += xinc;
-      error += two_dy;
-      if (error > dx) {
-        error -= two_dx;
-        y += yinc;
-      }
-    }
-  } else {
-    error = 0;
-    for (int i = 0; i < dy; i++) {
-      set_pixel_clipped(buffer, x, y, color);
-      y += yinc;
-      error += two_dx;
-      if (error > dy) {
-        error -= two_dy;
-        x += xinc;
-      }
-    }
-  }
-}
-
-inline void draw_digit(uint8_t *buffer, int const x, int const y, int const digit) {
-  for (int y_loop = 0; y_loop < DIGIT_HEIGHT; y_loop++) {
-    std::memcpy(buffer + INDEX_OF(x, y + y_loop), digit_sprites[digit][y_loop],
-                DIGIT_WIDTH);
-  }
-}
-
-void draw_number(uint8_t * const buffer, int x, int const y, int number) {
-  if (number < 0) {
-    // TODO: ascii table (maybe I should use cogp47?)
-    int const dash_y = y + (DIGIT_HEIGHT >> 1);
-    line(buffer, x, dash_y, x + 4, dash_y, MAX_COLOR);
-    number *= -1;
-    x += 5;
-  }
-
-  if (number < 10) {
-    draw_digit(buffer, x, y, number);
-    return;
-  }
-
-  int divisor = 10000; // Max 16-bit power of 10
-  while (divisor > number) {
-    divisor /= 10;
-  }
-  do {
-    draw_digit(buffer, x, y, number / divisor);
-    x += DIGIT_SPACING;
-    number %= divisor;
-    divisor /= 10;
-  } while (divisor > 0);
-}
 
 /*
  * Look-up tables
@@ -759,9 +287,7 @@ void init(uint8_t *&front_buffer, uint8_t *&back_buffer) {
     std::exit(1);
   }
 
-  set_mode(VGA_256_COLOR_MODE);
-
-  if (get_mode() != VGA_256_COLOR_MODE) {
+  if (!set_vga_mode()) {
     std::cerr << "Unable to set 320x200x256 color mode\n";
     std::exit(1);
   }
@@ -770,6 +296,7 @@ void init(uint8_t *&front_buffer, uint8_t *&back_buffer) {
   fill_targets();
   fill_weighted_averages();
 
+  // TODO: seed with time or a specified value
   std::srand(15);
   init_rnd();
 }
@@ -801,7 +328,7 @@ struct GameData {
 
 void enter_play(GameData &g, MouseState const &) {
   init_rnd();
-  set_palette(pal_table[get_rnd() % NUM_PALETTES], g.is_noisy);
+  set_palette(palettes[get_rnd() % NUM_PALETTES], g.is_noisy);
 
   float const DIAG_START = START_SPEED / std::sqrt(2.0);
 
@@ -834,7 +361,7 @@ void process_hit(GameData &g, float &front_delta, float &front_pos,
   front_delta = g.speed * direction;
   front_pos = paddle_pos + (paddle_pos - front_pos);
   side_delta = g.speed * (side_pos - mouse_pos) * SIDE_SPEED_FACTOR;
-  set_palette(pal_table[get_rnd() % NUM_PALETTES], g.is_noisy);
+  set_palette(palettes[get_rnd() % NUM_PALETTES], g.is_noisy);
   g.curr_effect = choose_effect();
   g.score++;
 }
@@ -991,9 +518,16 @@ static const StateEntry state_table[kNumStates] = {
     {enter_lost, update_lost, NULL, render_lost},                   // kLost
 };
 
-int main() {
-  uint8_t const old_mode = get_mode();
+void get_scaled_mouse_state(MouseState &mouse) {
+  get_mouse_state(mouse);
 
+  mouse.x = mouse.x * MOUSE_X_SCALE + MOUSE_MARGIN;
+  mouse.y = mouse.y * MOUSE_Y_SCALE + MOUSE_MARGIN;
+
+  assert_onscreen(mouse.x, mouse.y);
+}
+
+int main() {
   uint8_t *front_buffer, *back_buffer;
   init(front_buffer, back_buffer);
 
@@ -1003,7 +537,8 @@ int main() {
   State state = kPlaying;
   enter_play(g, mouse);
 
-  for (get_mouse_state(mouse); mouse.buttons != QUIT; get_mouse_state(mouse)) {
+  for (get_scaled_mouse_state(mouse); mouse.buttons != QUIT;
+       get_scaled_mouse_state(mouse)) {
     State const new_state = state_table[state].update(g, mouse);
 
     if (new_state != state) {
@@ -1026,7 +561,7 @@ int main() {
     std::swap(front_buffer, back_buffer);
   }
 
-  set_mode(old_mode);
+  reset_mode();
 
   return 0;
 }
