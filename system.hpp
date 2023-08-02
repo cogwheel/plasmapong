@@ -9,6 +9,9 @@
 #define SCREEN_SIZE (SCREEN_WIDTH * SCREEN_HEIGHT)
 #define MAX_COLOR_COMPONENT 63 // RGB components in the palette
 
+#define LMB 1
+#define RMB 2
+
 bool set_vga_mode();
 void reset_mode();
 

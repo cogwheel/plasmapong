@@ -60,6 +60,8 @@ using std::uint8_t;
 
 #define MAX_RAND_NUMS 1021
 
+#define QUIT (LMB + RMB)
+
 // Graphics
 #define SCORE_X 10
 #define SCORE_Y 10
@@ -86,10 +88,6 @@ using std::uint8_t;
 
 #define TAU 6.2831853071795864
 
-#define LMB 1
-#define RMB 2
-#define QUIT (LMB + RMB)
-
 #define MAX_WEIGHT 12
 #define NUM_ANGLES 256
 
@@ -99,19 +97,6 @@ using std::uint8_t;
 
 #define MOUSE_X_SCALE (float(MOUSE_X_RANGE) / (SCREEN_WIDTH))
 #define MOUSE_Y_SCALE (float(MOUSE_Y_RANGE) / (SCREEN_HEIGHT))
-
-/*
- * Helpers
- */
-
-void get_scaled_mouse_state(MouseState &mouse) {
-  get_mouse_state(mouse);
-
-  mouse.x = mouse.x * MOUSE_X_SCALE + MOUSE_MARGIN;
-  mouse.y = mouse.y * MOUSE_Y_SCALE + MOUSE_MARGIN;
-
-  assert_onscreen(mouse.x, mouse.y);
-}
 
 /*
  * Look-up tables
@@ -532,6 +517,15 @@ static const StateEntry state_table[kNumStates] = {
     {NULL, update_losing, render_play_back, render_play_front},     // kLosing
     {enter_lost, update_lost, NULL, render_lost},                   // kLost
 };
+
+void get_scaled_mouse_state(MouseState &mouse) {
+  get_mouse_state(mouse);
+
+  mouse.x = mouse.x * MOUSE_X_SCALE + MOUSE_MARGIN;
+  mouse.y = mouse.y * MOUSE_Y_SCALE + MOUSE_MARGIN;
+
+  assert_onscreen(mouse.x, mouse.y);
+}
 
 int main() {
   uint8_t *front_buffer, *back_buffer;
