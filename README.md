@@ -1,3 +1,7 @@
+# Project Moved
+
+[plasmapong](https://codeberg.org/cogwheel/plasmapong) is now hosted on codeberg.org.
+
 # PlasmaPong Refactor
 
 My attempt to clean up an ancient DOS game a friend and I made in high school.
